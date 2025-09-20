@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Mon Traitement de Texte Avancé</title>
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Montserrat:wght@400;700&family=Open+Sans:wght@400;700&family=Playfair+Display:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Définition des variables pour les deux thèmes */
+        :root {
+            --body-bg: #f4f4f4;
+            --text-color: #333;
+            --editor-bg: #fff;
+            --editor-border: #ccc;
+            --toolbar-bg: #e0e0e0;
+            --toolbar-border: #ccc;
+            --button-bg: #ddd;
+            --button-hover-bg: #ccc;
+            --dropdown-bg: #f9f9f9;
+            --dropdown-hover-bg: #f1f1f1;
+        }
+        body.dark-mode {
+            --body-bg: #1a1a1a;
+            --text-color: #e0e0e0;
+            --editor-bg: #222;
+            --editor-border: #333;
+            --toolbar-bg: #2a2a2a;
+            --toolbar-border: #333;
+            --button-bg: #333;
+            --button-hover-bg: #444;
+            --dropdown-bg: #2a2a2a;
+            --dropdown-hover-bg: #3a3a3a;
+        }
+
+        /* Styles généraux */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: var(--body-bg);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        h1 { text-align: center; }
+        #editor {
+            height: 400px;
+            background-color: var(--editor-bg);
+            border: 1px solid var(--editor-border);
+        }
+
+        /* Styles de la barre d'outils Quill */
+        .ql-toolbar.ql-snow {
+            background: var(--toolbar-bg);
+            border: 1px solid var(--toolbar-border) !important;
+            border-bottom: none !important;
+        }
+        .ql-container.ql-snow {
+            border: 1px solid var(--editor-border) !important;
+        }
+
+        /* Styles des boutons */
+        .toolbar-section {
+            margin-top: 10px;
+            margin-right: 10px;
+            display: inline-block;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: var(--button-bg);
+            color: var(--text-color);
+            border: 1px solid var(--editor-border);
+            border-radius: 5px;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: var(--button-hover-bg);
+        }
+
+        /* Styles pour le menu déroulant */
+        .dropdown-container { position: relative; display: inline-block; }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            background-color: var(--dropdown-bg);
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+            border-radius: 5px;
+        }
+        .dropdown-menu a {
+            color: var(--text-color);
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+        }
+        .dropdown-menu a:hover { background-color: var(--dropdown-hover-bg); }
+        .show { display: block; }
+
+        /* NOUVELLE LOGIQUE POUR L'IMPRESSION */
+        @media print {
+            body * { /* Cache TOUT par défaut */
+                visibility: hidden;
+            }
+            #editor, #editor * { /* Affiche l'éditeur et ses enfants */
+                visibility: visible;
+            }
+            #editor {
+                position: absolute; /* Place l'éditeur en haut de la page */
+                left: 0;
+                top: 0;
+                width: 100%; /* S'assure que l'éditeur prend toute la largeur */
+                height: auto; /* Permet à la hauteur de s'adapter au contenu */
+                border: none !important; /* Retire la bordure à l'impression */
+                background-color: white; /* Fond blanc pour une impression claire */
+                color: black;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Mon Traitement de Texte</h1>
+    <div id="editor" spellcheck="true"></div>
+    <br>
+    <div>
+        <div class="toolbar-section">
+            <button id="save-btn">Sauvegarder</button>
+            <button id="load-btn">Charger</button>
+            <div class="dropdown-container">
+                <button id="download-btn">Télécharger</button>
+                <div id="downloadDropdown" class="dropdown-menu">
+                    <a href="#" id="download-html">HTML (UTF-8)</a>
+                    <a href="#" id="download-html-utf16">HTML (UTF-16)</a>
+                    <a href="#" id="download-pdf">PDF</a>
+                    <a href="#" id="download-txt">TXT (UTF-8)</a>
+                    <a href="#" id="download-txt-utf16">TXT (UTF-16)</a>
+                    <a href="#" id="download-md">Markdown</a>
+                </div>
+            </div>
+            <button id="import-btn">Importer</button>
+            <input type="file" id="file-input" accept=".html,.txt" style="display:none;">
+        </div>
+        <div class="toolbar-section">
+            <button id="undo-btn">Annuler</button>
+            <button id="redo-btn">Rétablir</button>
+            <button id="fullscreen-btn">Plein écran</button>
+            <button id="print-btn">Imprimer</button>
+            <button id="dark-mode-btn">Mode Nuit</button>
+        </div>
+    </div>
+    <p>
+        Mots : <span id="word-count">0</span> |
+        Caractères : <span id="char-count">0</span>
+        <span id="auto-save-status" style="margin-left: 20px;"></span>
+    </p>
+
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/turndown@7.1.3/dist/turndown.js"></script>
+
+    <script>
+        // 1. Initialisation de Quill
+        const Font = Quill.import('formats/font');
+        Font.whitelist = ['sans-serif', 'serif', 'monospace', 'Open Sans', 'Roboto', 'Playfair Display', 'Lato', 'Montserrat'];
+        Quill.register(Font, true);
+
+        const quill = new Quill('#editor', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    [{ 'font': Font.whitelist }],
+                    [{ 'size': ['small', false, 'large', 'huge'] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'color': [] }, { 'background': [] }],
+                    [{ 'align': [] }],
+                    ['link', 'image', 'video'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    [{ 'header': [1, 2, 3, false] }],
+                    ['clean']
+                ],
+                history: { delay: 2000, maxStack: 50, userOnly: true },
+                keyboard: {
+                    bindings: {
+                        save: { key: 'S', shortKey: true, handler: saveDocument },
+                        print: { key: 'P', shortKey: true, handler: window.print }
+                    }
+                }
+            }
+        });
+        
+        let lastSavedContent = JSON.stringify(quill.getContents());
+        const autoSaveStatus = document.getElementById('auto-save-status');
+        const autoSaveInterval = 30 * 1000; // 30 secondes en millisecondes
+
+        // 2. Fonctions de gestion de document
+        function saveDocument() {
+            try {
+                const content = JSON.stringify(quill.getContents());
+                localStorage.setItem('quill-document', content);
+                lastSavedContent = content;
+                autoSaveStatus.textContent = 'Sauvegardé !';
+                console.log('Document sauvegardé localement !');
+            } catch (e) {
+                autoSaveStatus.textContent = 'Erreur de sauvegarde';
+                console.error('Erreur lors de la sauvegarde : ', e.message);
+            }
+        }
+
+        function loadDocument() {
+            try {
+                const content = localStorage.getItem('quill-document');
+                if (content) {
+                    quill.setContents(JSON.parse(content));
+                    lastSavedContent = content;
+                    console.log('Document chargé depuis le stockage local !');
+                } else {
+                    console.log('Aucun document sauvegardé.');
+                }
+            } catch (e) {
+                console.error('Erreur lors du chargement : ', e.message);
+            }
+        }
+
+        function autoSaveDocument() {
+            const currentContent = JSON.stringify(quill.getContents());
+            if (currentContent !== lastSavedContent) {
+                saveDocument();
+                autoSaveStatus.textContent = 'Sauvegarde automatique...';
+            } else {
+                autoSaveStatus.textContent = 'Aucun changement';
+            }
+        }
+
+        function handleFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                quill.root.innerHTML = e.target.result;
+            };
+            reader.readAsText(file);
+        }
+
+        // 3. Fonctions de téléchargement
+        function createAndClickLink(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        const downloaders = {
+            html: () => {
+                const content = quill.root.innerHTML;
+                const blob = new Blob([content], { type: "text/html;charset=utf-8" });
+                createAndClickLink(blob, "document.html");
+            },
+            htmlUTF16: () => {
+                const content = quill.root.innerHTML;
+                const encoder = new TextEncoder("utf-16le");
+                const utf16Content = encoder.encode(content);
+                const blob = new Blob([utf16Content], { type: "text/html;charset=utf-16" });
+                createAndClickLink(blob, "document_utf16.html");
+            },
+            pdf: () => {
+                const element = document.createElement("div");
+                element.innerHTML = quill.root.innerHTML;
+                html2pdf().from(element).save("document.pdf");
+            },
+            txt: () => {
+                const content = quill.getText();
+                const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+                createAndClickLink(blob, "document.txt");
+            },
+            txtUTF16: () => {
+                const content = quill.getText();
+                const encoder = new TextEncoder("utf-16le");
+                const utf16Content = encoder.encode(content);
+                const blob = new Blob([utf16Content], { type: "text/plain;charset=utf-16" });
+                createAndClickLink(blob, "document_utf16.txt");
+            },
+            md: () => {
+                const turndownService = new TurndownService();
+                const markdown = turndownService.turndown(quill.root.innerHTML);
+                const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+                createAndClickLink(blob, "document.md");
+            }
+        };
+
+        // 4. Fonctions d'interface
+        function toggleFullscreen() {
+            const elem = document.documentElement;
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            } else {
+                elem.requestFullscreen().catch(err => {
+                    console.error(`Erreur: ${err.message}`);
+                });
+            }
+        }
+
+        function toggleDropdown() {
+            document.getElementById("downloadDropdown").classList.toggle("show");
+        }
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const theme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+            localStorage.setItem('theme', theme);
+        }
+
+        function updateCounts() {
+            const text = quill.getText();
+            const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+            const charCount = text.length;
+            document.getElementById('word-count').textContent = wordCount;
+            document.getElementById('char-count').textContent = charCount;
+        }
+
+        // 5. Attachement des événements
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') { document.body.classList.add('dark-mode'); }
+            loadDocument();
+            updateCounts();
+            setInterval(autoSaveDocument, autoSaveInterval);
+        });
+        
+        quill.on('text-change', updateCounts);
+
+        document.getElementById('save-btn').addEventListener('click', saveDocument);
+        document.getElementById('load-btn').addEventListener('click', loadDocument);
+        document.getElementById('import-btn').addEventListener('click', () => document.getElementById('file-input').click());
+        document.getElementById('file-input').addEventListener('change', handleFileImport);
+        document.getElementById('undo-btn').addEventListener('click', () => quill.history.undo());
+        document.getElementById('redo-btn').addEventListener('click', () => quill.history.redo());
+        document.getElementById('fullscreen-btn').addEventListener('click', toggleFullscreen);
+        document.getElementById('print-btn').addEventListener('click', () => window.print());
+        document.getElementById('dark-mode-btn').addEventListener('click', toggleDarkMode);
+
+        document.getElementById('download-btn').addEventListener('click', toggleDropdown);
+        document.getElementById('download-html').addEventListener('click', downloaders.html);
+        document.getElementById('download-html-utf16').addEventListener('click', downloaders.htmlUTF16);
+        document.getElementById('download-pdf').addEventListener('click', downloaders.pdf);
+        document.getElementById('download-txt').addEventListener('click', downloaders.txt);
+        document.getElementById('download-txt-utf16').addEventListener('click', downloaders.txtUTF16);
+        document.getElementById('download-md').addEventListener('click', downloaders.md);
+
+        window.onclick = (event) => {
+            if (!event.target.matches('#download-btn')) {
+                const dropdown = document.getElementById("downloadDropdown");
+                if (dropdown.classList.contains('show')) {
+                    dropdown.classList.remove('show');
+                }
+            }
+        };
+    </script>
+</body>
+</html>
