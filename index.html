@@ -415,7 +415,7 @@
             if (savedTheme === 'dark') { document.body.classList.add('dark-mode'); }
             loadDocument();
             updateCounts();
-            setInterval(autoSaveDocument, autoSaveInterval);
+            // setInterval(autoSaveDocument, autoSaveInterval);
         });
         quill.on('text-change', updateCounts);
 
