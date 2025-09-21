@@ -7,7 +7,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Montserrat:wght@400;700&family=Open+Sans:wght@400;700&family=Playfair+Display:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-
     <style>
         /* Définition des variables pour les deux thèmes */
         :root {
@@ -21,6 +20,7 @@
             --button-hover-bg: #ccc;
             --dropdown-bg: #f9f9f9;
             --dropdown-hover-bg: #f1f1f1;
+            --menu-bg: #e9e9e9;
         }
         body.dark-mode {
             --body-bg: #1a1a1a;
@@ -33,21 +33,67 @@
             --button-hover-bg: #444;
             --dropdown-bg: #2a2a2a;
             --dropdown-hover-bg: #3a3a3a;
+            --menu-bg: #222;
         }
 
         /* Styles généraux */
         body {
             font-family: Arial, sans-serif;
-            margin: 20px;
+            margin: 0;
             background-color: var(--body-bg);
             color: var(--text-color);
             transition: background-color 0.3s, color 0.3s;
+        }
+        .container {
+            margin: 20px;
         }
         h1 { text-align: center; }
         #editor {
             height: 400px;
             background-color: var(--editor-bg);
             border: 1px solid var(--editor-border);
+        }
+
+        /* Styles de la barre de menus */
+        .main-menu {
+            background-color: var(--menu-bg);
+            border-bottom: 1px solid var(--toolbar-border);
+            padding: 8px 16px;
+            display: flex;
+            gap: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .menu-item {
+            position: relative;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .menu-item:hover {
+            text-decoration: underline;
+        }
+        .menu-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background-color: var(--dropdown-bg);
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+            border-radius: 5px;
+            padding: 5px 0;
+        }
+        .menu-dropdown a {
+            color: var(--text-color);
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+        }
+        .menu-dropdown a:hover {
+            background-color: var(--dropdown-hover-bg);
+        }
+        .menu-item:hover .menu-dropdown {
+            display: block;
         }
 
         /* Styles de la barre d'outils Quill */
@@ -60,127 +106,120 @@
             border: 1px solid var(--editor-border) !important;
         }
 
-        /* Styles des boutons */
-        .toolbar-section {
-            margin-top: 10px;
-            margin-right: 10px;
-            display: inline-block;
+        /* Styles des boutons (pour les boutons Annuler/Rétablir) */
+        .toolbar-group {
+            display: flex;
+            gap: 5px;
         }
         button {
-            padding: 10px 20px;
-            font-size: 16px;
+            padding: 8px 12px;
+            font-size: 14px;
             cursor: pointer;
             background-color: var(--button-bg);
             color: var(--text-color);
             border: 1px solid var(--editor-border);
-            border-radius: 5px;
+            border-radius: 3px;
             transition: background-color 0.2s;
         }
         button:hover {
             background-color: var(--button-hover-bg);
         }
 
-        /* Styles pour le menu déroulant */
-        .dropdown-container { position: relative; display: inline-block; }
-        .dropdown-menu {
-            display: none;
-            position: absolute;
-            background-color: var(--dropdown-bg);
-            min-width: 160px;
-            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-            z-index: 1;
-            border-radius: 5px;
+        /* Pied de page pour le compteur de mots */
+        .footer {
+            margin-top: 10px;
+            text-align: right;
+            font-size: 14px;
         }
-        .dropdown-menu a {
-            color: var(--text-color);
-            padding: 12px 16px;
-            text-decoration: none;
-            display: block;
-        }
-        .dropdown-menu a:hover { background-color: var(--dropdown-hover-bg); }
-        .show { display: block; }
 
         /* NOUVELLE LOGIQUE POUR L'IMPRESSION */
         @media print {
-            body * { /* Cache TOUT par défaut */
-                visibility: hidden;
-            }
-            #editor, #editor * { /* Affiche l'éditeur et ses enfants */
-                visibility: visible;
-            }
+            body * { visibility: hidden; }
+            #editor, #editor * { visibility: visible; }
             #editor {
-                position: absolute; /* Place l'éditeur en haut de la page */
+                position: absolute;
                 left: 0;
                 top: 0;
-                width: 100%; /* S'assure que l'éditeur prend toute la largeur */
-                height: auto; /* Permet à la hauteur de s'adapter au contenu */
-                border: none !important; /* Retire la bordure à l'impression */
-                background-color: white; /* Fond blanc pour une impression claire */
+                width: 100%;
+                height: auto;
+                border: none !important;
+                background-color: white;
                 color: black;
             }
         }
     </style>
 </head>
 <body>
-    <h1>Mon Traitement de Texte</h1>
-    <div id="editor" spellcheck="true"></div>
-    <br>
-    <div>
-        <div class="toolbar-section">
-            <button id="save-btn">Sauvegarder</button>
-            <button id="load-btn">Charger</button>
-            <div class="dropdown-container">
-                <button id="download-btn">Télécharger</button>
-                <div id="downloadDropdown" class="dropdown-menu">
-                    <a href="#" id="download-html">HTML (UTF-8)</a>
-                    <a href="#" id="download-html-utf16">HTML (UTF-16)</a>
-                    <a href="#" id="download-pdf">PDF</a>
-                    <a href="#" id="download-txt">TXT (UTF-8)</a>
-                    <a href="#" id="download-txt-utf16">TXT (UTF-16)</a>
-                    <a href="#" id="download-md">Markdown</a>
+    <nav class="main-menu">
+        <div class="menu-item">
+            Fichier
+            <div class="menu-dropdown">
+                <a href="#" id="save-btn">Sauvegarder</a>
+                <a href="#" id="load-btn">Charger</a>
+                <a href="#" id="import-btn">Importer...</a>
+                <div class="dropdown-container">
+                    <a href="#">Télécharger...</a>
+                    <div id="downloadDropdown" class="menu-dropdown show-on-click">
+                        <a href="#" id="download-html">HTML (UTF-8)</a>
+                        <a href="#" id="download-html-utf16">HTML (UTF-16)</a>
+                        <a href="#" id="download-pdf">PDF</a>
+                        <a href="#" id="download-txt">TXT (UTF-8)</a>
+                        <a href="#" id="download-txt-utf16">TXT (UTF-16)</a>
+                        <a href="#" id="download-md">Markdown</a>
+                    </div>
                 </div>
             </div>
-            <button id="import-btn">Importer</button>
-            <input type="file" id="file-input" accept=".html,.txt" style="display:none;">
         </div>
-        <div class="toolbar-section">
-            <button id="undo-btn">Annuler</button>
-            <button id="redo-btn">Rétablir</button>
-            <button id="fullscreen-btn">Plein écran</button>
-            <button id="print-btn">Imprimer</button>
-            <button id="dark-mode-btn">Mode Nuit</button>
+        <div class="menu-item">
+            Édition
+            <div class="menu-dropdown">
+                <a href="#" id="undo-btn">Annuler (Ctrl+Z)</a>
+                <a href="#" id="redo-btn">Rétablir (Ctrl+Y)</a>
+                <a href="#" id="check-btn">Vérifier l'orthographe</a>
+            </div>
+        </div>
+        <div class="menu-item">
+            Affichage
+            <div class="menu-dropdown">
+                <a href="#" id="dark-mode-btn">Mode Nuit</a>
+                <a href="#" id="fullscreen-btn">Plein écran</a>
+            </div>
+        </div>
+        <a href="#" id="print-btn" style="text-decoration: none; font-weight: bold; color: inherit;">Imprimer</a>
+        <input type="file" id="file-input" accept=".html,.txt" style="display:none;">
+    </nav>
+    <div class="container">
+        <div id="editor" spellcheck="true"></div>
+        <div class="footer">
+            Mots : <span id="word-count">0</span> |
+            Caractères : <span id="char-count">0</span>
+            <span id="auto-save-status" style="margin-left: 20px;"></span>
         </div>
     </div>
-    <p>
-        Mots : <span id="word-count">0</span> |
-        Caractères : <span id="char-count">0</span>
-        <span id="auto-save-status" style="margin-left: 20px;"></span>
-    </p>
-
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/turndown@7.1.3/dist/turndown.js"></script>
-
     <script>
-        // 1. Initialisation de Quill
         const Font = Quill.import('formats/font');
         Font.whitelist = ['sans-serif', 'serif', 'monospace', 'Open Sans', 'Roboto', 'Playfair Display', 'Lato', 'Montserrat'];
         Quill.register(Font, true);
 
+        const toolbarOptions = [
+            [{ 'font': Font.whitelist }],
+            [{ 'size': ['small', false, 'large', 'huge'] }],
+            ['bold', 'italic', 'underline', 'strike'],
+            [{ 'color': [] }, { 'background': [] }],
+            [{ 'align': [] }],
+            ['link', 'image', 'video'],
+            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+            [{ 'header': [1, 2, 3, false] }],
+            ['clean']
+        ];
+        
         const quill = new Quill('#editor', {
             theme: 'snow',
             modules: {
-                toolbar: [
-                    [{ 'font': Font.whitelist }],
-                    [{ 'size': ['small', false, 'large', 'huge'] }],
-                    ['bold', 'italic', 'underline', 'strike'],
-                    [{ 'color': [] }, { 'background': [] }],
-                    [{ 'align': [] }],
-                    ['link', 'image', 'video'],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    [{ 'header': [1, 2, 3, false] }],
-                    ['clean']
-                ],
+                toolbar: toolbarOptions,
                 history: { delay: 2000, maxStack: 50, userOnly: true },
                 keyboard: {
                     bindings: {
@@ -190,12 +229,74 @@
                 }
             }
         });
+
+        // --- Correcteur orthographique ---
+        let lastSpellCheckContent = "";
+        
+        async function checkSpelling() {
+            const text = quill.getText();
+            if (text === lastSpellCheckContent) {
+                return; // Pas de changement, pas besoin de vérifier
+            }
+
+            // Enlever les surbrillances existantes
+            const editorContent = quill.getContents();
+            const operations = [];
+            let i = 0;
+            while(i < editorContent.ops.length) {
+                const op = editorContent.ops[i];
+                if (op.attributes && op.attributes.background) {
+                    operations.push({ retain: op.retain || op.insert.length, attributes: { background: null } });
+                } else if (op.insert) {
+                    operations.push({ retain: op.insert.length });
+                }
+                i++;
+            }
+            quill.updateContents(operations);
+            
+            const url = 'https://languagetool.org/api/v2/check';
+            const params = new URLSearchParams({
+                text: text,
+                language: 'fr'
+            });
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: params
+                });
+                const data = await response.json();
+
+                data.matches.forEach(match => {
+                    const start = match.offset;
+                    const length = match.length;
+                    
+                    quill.formatText(start, length, 'background', 'rgba(255, 0, 0, 0.2)');
+                });
+                lastSpellCheckContent = text;
+                console.log("Vérification orthographique terminée !");
+
+            } catch (error) {
+                console.error('Erreur lors de la vérification orthographique :', error);
+            }
+        }
+        
+        // Écouteur pour la vérification automatique
+        quill.on('text-change', () => {
+            // Appelez la vérification après un petit délai
+            setTimeout(checkSpelling, 1000); 
+            updateCounts();
+        });
+
+        // --- Fin Correcteur orthographique ---
         
         let lastSavedContent = JSON.stringify(quill.getContents());
         const autoSaveStatus = document.getElementById('auto-save-status');
-        const autoSaveInterval = 30 * 1000; // 30 secondes en millisecondes
+        const autoSaveInterval = 30 * 1000;
 
-        // 2. Fonctions de gestion de document
         function saveDocument() {
             try {
                 const content = JSON.stringify(quill.getContents());
@@ -208,7 +309,6 @@
                 console.error('Erreur lors de la sauvegarde : ', e.message);
             }
         }
-
         function loadDocument() {
             try {
                 const content = localStorage.getItem('quill-document');
@@ -223,7 +323,6 @@
                 console.error('Erreur lors du chargement : ', e.message);
             }
         }
-
         function autoSaveDocument() {
             const currentContent = JSON.stringify(quill.getContents());
             if (currentContent !== lastSavedContent) {
@@ -233,7 +332,6 @@
                 autoSaveStatus.textContent = 'Aucun changement';
             }
         }
-
         function handleFileImport(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -243,8 +341,6 @@
             };
             reader.readAsText(file);
         }
-
-        // 3. Fonctions de téléchargement
         function createAndClickLink(blob, filename) {
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
@@ -255,7 +351,6 @@
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
         }
-
         const downloaders = {
             html: () => {
                 const content = quill.root.innerHTML;
@@ -293,8 +388,6 @@
                 createAndClickLink(blob, "document.md");
             }
         };
-
-        // 4. Fonctions d'interface
         function toggleFullscreen() {
             const elem = document.documentElement;
             if (document.fullscreenElement) {
@@ -305,17 +398,11 @@
                 });
             }
         }
-
-        function toggleDropdown() {
-            document.getElementById("downloadDropdown").classList.toggle("show");
-        }
-
         function toggleDarkMode() {
             document.body.classList.toggle('dark-mode');
             const theme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
             localStorage.setItem('theme', theme);
         }
-
         function updateCounts() {
             const text = quill.getText();
             const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
@@ -323,8 +410,6 @@
             document.getElementById('word-count').textContent = wordCount;
             document.getElementById('char-count').textContent = charCount;
         }
-
-        // 5. Attachement des événements
         document.addEventListener('DOMContentLoaded', () => {
             const savedTheme = localStorage.getItem('theme');
             if (savedTheme === 'dark') { document.body.classList.add('dark-mode'); }
@@ -332,7 +417,6 @@
             updateCounts();
             setInterval(autoSaveDocument, autoSaveInterval);
         });
-        
         quill.on('text-change', updateCounts);
 
         document.getElementById('save-btn').addEventListener('click', saveDocument);
@@ -344,23 +428,13 @@
         document.getElementById('fullscreen-btn').addEventListener('click', toggleFullscreen);
         document.getElementById('print-btn').addEventListener('click', () => window.print());
         document.getElementById('dark-mode-btn').addEventListener('click', toggleDarkMode);
-
-        document.getElementById('download-btn').addEventListener('click', toggleDropdown);
         document.getElementById('download-html').addEventListener('click', downloaders.html);
         document.getElementById('download-html-utf16').addEventListener('click', downloaders.htmlUTF16);
         document.getElementById('download-pdf').addEventListener('click', downloaders.pdf);
         document.getElementById('download-txt').addEventListener('click', downloaders.txt);
         document.getElementById('download-txt-utf16').addEventListener('click', downloaders.txtUTF16);
         document.getElementById('download-md').addEventListener('click', downloaders.md);
-
-        window.onclick = (event) => {
-            if (!event.target.matches('#download-btn')) {
-                const dropdown = document.getElementById("downloadDropdown");
-                if (dropdown.classList.contains('show')) {
-                    dropdown.classList.remove('show');
-                }
-            }
-        };
+        document.getElementById('check-btn').addEventListener('click', checkSpelling);
     </script>
 </body>
 </html>
