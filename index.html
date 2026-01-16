@@ -34,7 +34,6 @@
             --menu-bg: #222;
         }
 
-        /* Styles généraux - Utilisation de System UI pour performance max */
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
             margin: 0;
@@ -73,7 +72,7 @@
             font-weight: bold;
             padding: 5px 10px;
             border-radius: 4px;
-            user-select: none; /* Améliore UX */
+            user-select: none;
         }
         .menu-item:hover {
             background-color: var(--button-hover-bg);
@@ -220,9 +219,9 @@
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
 
     <script>
-        // --- Configuration Quill avec Polices Standards (RAM Faible) ---
+        // --- Configuration Quill avec Polices Standards
         const Font = Quill.import('formats/font');
-        // Liste des polices Web Safe (déjà sur l'ordinateur)
+        // Liste des polices Web Safe
         const fonts = [
             'arial', 'comic-sans', 'courier-new', 'georgia', 
             'helvetica', 'lucida', 'tahoma', 'times-new-roman', 
@@ -237,7 +236,7 @@
             ['bold', 'italic', 'underline', 'strike'],
             [{ 'color': [] }, { 'background': [] }],
             [{ 'align': [] }],
-            ['link', 'image'], // Vidéo retirée pour économie RAM
+            ['link', 'image'], 
             [{ 'list': 'ordered'}, { 'list': 'bullet' }],
             [{ 'header': [1, 2, 3, false] }],
             ['clean']
@@ -249,7 +248,7 @@
                 toolbar: toolbarOptions,
                 history: { 
                     delay: 2000, 
-                    maxStack: 25, // RÉDUIT: Moins d'historique = Moins de RAM
+                    maxStack: 25, 
                     userOnly: true 
                 },
                 keyboard: {
@@ -276,7 +275,7 @@
             });
         }
 
-        // --- Correcteur orthographique Optimisé ---
+        // --- Correcteur orthographique ---
         let isChecking = false;
         
         async function checkSpelling() {
@@ -284,7 +283,7 @@
             isChecking = true;
             document.getElementById('check-btn').textContent = "Vérification...";
             
-            // Nettoyage agressif
+            // Nettoyage 
             quill.formatText(0, quill.getLength(), 'background', false);
             
             const text = quill.getText();
@@ -309,7 +308,7 @@
                 
                 const data = await response.json();
 
-                // LIMITATION: On n'affiche que les 50 premières fautes pour sauver le DOM
+                // LIMITATION: 50 premières fautes pour sauver le DOM
                 const matches = data.matches.slice(0, 50); 
                 
                 matches.forEach(match => {
@@ -341,7 +340,6 @@
                 localStorage.setItem('quill-document', content);
                 lastSavedContent = content;
                 autoSaveStatus.textContent = 'Sauvegardé !';
-                // Libération mémoire string immédiate (GC hint)
                 setTimeout(() => { autoSaveStatus.textContent = ''; }, 2000);
             } catch (e) {
                 autoSaveStatus.textContent = 'Erreur sauvegarde';
@@ -384,10 +382,9 @@
                     const container = document.createElement('div');
                     container.innerHTML = e.target.result;
                     quill.root.innerHTML = container.innerHTML;
-                    // Aide GC : Détachement explicite
                     container.innerHTML = ""; 
                 }
-                event.target.value = ''; // Reset input pour permettre re-sélection même fichier
+                event.target.value = ''; 
             };
             reader.readAsText(file);
         }
@@ -400,7 +397,6 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            // CRITIQUE pour RAM: Révocation immédiate
             URL.revokeObjectURL(url); 
         }
 
@@ -434,8 +430,8 @@
                     const opt = {
                         margin: 10,
                         filename: 'document.pdf',
-                        image: { type: 'jpeg', quality: 0.90 }, // Qualité JPEG réduite légèrement pour RAM
-                        html2canvas: { scale: 1.5 }, // Scale réduit (2 -> 1.5) pour RAM
+                        image: { type: 'jpeg', quality: 0.90 }, 
+                        html2canvas: { scale: 1.5 },
                         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
                     };
                     
@@ -501,7 +497,7 @@
             loadDocument();
             updateCounts();
             
-            // Auto-save toutes les 60s (Moins fréquent = moins de CPU/RAM)
+            // Auto-save
             setInterval(autoSaveDocument, 60000);
         });
 
