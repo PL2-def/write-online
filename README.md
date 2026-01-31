@@ -1,0 +1,1 @@
+This project is a performance- and privacy-focused word processor. It's completely static so that none of your data is collected on my end. This project is currently quite limited; if you want a more complete project, you can check out my l-class repository, which will be released soon.
