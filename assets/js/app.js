@@ -194,25 +194,40 @@ function stopCollaboration() {
     window.history.replaceState({}, document.title, window.location.pathname);
 }
 
-function startCollaboration(roomName, password = null) {
+async function startCollaboration(roomName, password = null) {
     if (!roomName) return;
     
-    ydoc = new Y.Doc();
-    const options = password ? { password: password } : {};
-    provider = new YWebrtcProvider(roomName, ydoc, options);
+    saveIndicator.textContent = "Connexion Collab...";
     
-    const ytext = ydoc.getText('quill');
-    binding = new QuillBinding(ytext, quill, provider.awareness);
+    try {
+        // Chargement dynamique des dépendances P2P via ESM
+        const [{ Doc }, { WebrtcProvider }, { QuillBinding }] = await Promise.all([
+            import('https://esm.sh/yjs@13.6.8'),
+            import('https://esm.sh/y-webrtc@10.3.0'),
+            import('https://esm.sh/y-quill@1.2.1')
+        ]);
 
-    collabBtn.style.background = "var(--accent)";
-    collabBtn.style.color = "white";
-    saveIndicator.textContent = `En direct : ${roomName}${password ? ' (Chiffré)' : ' (Public)'}`;
-    
-    collabModal.classList.remove('active');
+        ydoc = new Doc();
+        const options = password ? { password: password } : {};
+        provider = new WebrtcProvider(roomName, ydoc, options);
+        
+        const ytext = ydoc.getText('quill');
+        binding = new QuillBinding(ytext, quill, null);
 
-    // Mettre à jour l'URL (sans mot de passe)
-    const newUrl = `${window.location.origin}${window.location.pathname}?room=${roomName}`;
-    window.history.replaceState({}, document.title, newUrl);
+        collabBtn.style.background = "var(--accent)";
+        collabBtn.style.color = "white";
+        saveIndicator.textContent = `En direct : ${roomName}${password ? ' (Chiffré)' : ' (Public)'}`;
+        
+        collabModal.classList.remove('active');
+
+        // Mettre à jour l'URL (sans mot de passe)
+        const newUrl = `${window.location.origin}${window.location.pathname}?room=${roomName}`;
+        window.history.replaceState({}, document.title, newUrl);
+    } catch (e) {
+        console.error("Erreur Collab:", e);
+        saveIndicator.textContent = "Erreur Collab";
+        alert("Impossible de démarrer la collaboration. Vérifiez votre connexion.");
+    }
 }
 
 // Events pour le modal Collab
