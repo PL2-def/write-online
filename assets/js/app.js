@@ -132,6 +132,41 @@ async function deleteDoc(id) {
 
 // ---------- SYSTÈME DE PARTAGE ----------
 
+async function shareDocument() {
+    const text = quill.getText().trim();
+    if (!text) return;
+
+    // Tentative de partage natif (mobile / navigateurs compatibles)
+    if (navigator.share) {
+        try {
+            await navigator.share({
+                title: docTitleInput.value || 'Document',
+                text: text
+            });
+            return;
+        } catch (e) {
+            // L'utilisateur a annulé ou l'API n'est pas supportée
+        }
+    }
+
+    // Fallback : lien compressé LZString
+    const compressed = LZString.compressToEncodedURIComponent(text);
+    const shareUrl = `${window.location.origin}${window.location.pathname}?data=${compressed}`;
+    
+    if (shareUrl.length > 2000) {
+        alert('Le document est trop long pour être partagé via un lien. Utilisez l\'export à la place.');
+        return;
+    }
+
+    try {
+        await navigator.clipboard.writeText(shareUrl);
+        alert('Lien de partage copié dans le presse-papier !');
+    } catch {
+        // Fallback si clipboard échoue
+        prompt('Copiez ce lien :', shareUrl);
+    }
+}
+
 // ---------- SYSTÈME DE COLLABORATION ----------
 
 let ydoc, provider, binding;
@@ -211,11 +246,13 @@ btnJoinCollab.onclick = () => {
     alert("Tentative de connexion à la salle...");
 };
 
-// Initialisation globale pour fermer les modals en cliquant à côté
-window.onclick = (e) => { 
-    if(e.target === settingsModal) settingsModal.classList.remove('active'); 
-    if(e.target === collabModal) collabModal.classList.remove('active'); 
-};
+// Fermeture des modals en cliquant sur l'overlay
+window.addEventListener('click', (e) => {
+    if (e.target === settingsModal) settingsModal.classList.remove('active');
+    if (e.target === collabModal) collabModal.classList.remove('active');
+    const passwordModal = document.getElementById('password-modal');
+    if (passwordModal && e.target === passwordModal) passwordModal.classList.remove('active');
+});
 
 // ---------- LOGIQUE UI & EVENTS ----------
 
@@ -295,7 +332,6 @@ function downloadFile(content, fileName, contentType) {
 
 settingsBtn.onclick = () => settingsModal.classList.add('active');
 closeSettings.onclick = () => settingsModal.classList.remove('active');
-window.onclick = (e) => { if(e.target === settingsModal) settingsModal.classList.remove('active'); };
 
 fontSelect.onchange = () => {
     const font = fontSelect.value;
@@ -334,8 +370,29 @@ async function initApp() {
     // Check for Collaboration Room
     const room = params.get('room');
     if (room) {
-        const pass = prompt("Cette salle peut nécessiter un mot de passe pour déchiffrer le contenu (Laissez vide si aucun) :");
-        startCollaboration(room, pass);
+        const passwordModal = document.getElementById('password-modal');
+        const submitPass = document.getElementById('btn-submit-pass');
+        const cancelPass = document.getElementById('cancel-pass');
+        const inputPass = document.getElementById('input-session-pass');
+
+        if (passwordModal && submitPass && cancelPass && inputPass) {
+            passwordModal.classList.add('active');
+
+            submitPass.onclick = () => {
+                const pass = inputPass.value.trim() || null;
+                passwordModal.classList.remove('active');
+                startCollaboration(room, pass);
+            };
+
+            cancelPass.onclick = () => {
+                passwordModal.classList.remove('active');
+                // Rejoindre sans mot de passe (session publique)
+                startCollaboration(room, null);
+            };
+        } else {
+            // Fallback si le modal n'existe pas
+            startCollaboration(room, null);
+        }
     }
 
     // Check for Shared Content (LZString)

@@ -37,6 +37,11 @@
     <script src="https://cdn.jsdelivr.net/npm/y-quill@0.1.5/dist/y-quill.min.js"></script>
 </head>
 <body data-theme="light">
+    <script>
+        // Application immédiate du thème pour éviter le flash blanc
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.body.setAttribute('data-theme', savedTheme);
+    </script>
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
         <div class="logo">
@@ -175,5 +180,29 @@
 
     <!-- App Logic -->
     <script type="module" src="assets/js/app.js"></script>
+
+    <!-- Password Required Modal -->
+    <div class="modal-overlay" id="password-modal">
+        <div class="modal-content glass" style="max-width: 400px;">
+            <h3 style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem;">
+                <i data-lucide="lock"></i> Mot de passe requis
+            </h3>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">
+                Cette salle peut nécessiter un mot de passe pour déchiffrer le contenu.
+            </p>
+            <div class="setting-item">
+                <input type="password" id="input-session-pass" placeholder="Mot de passe de la salle (ou vide)">
+            </div>
+            <button class="btn-primary" id="btn-submit-pass">Accéder à la salle</button>
+            <button class="btn-icon" id="cancel-pass" style="width: 100%; margin-top: 1rem;">Rejoindre sans mot de passe</button>
+        </div>
+    </div>
+
+    <div id="app-version" style="position: fixed; bottom: 10px; right: 10px; opacity: 0.5; font-size: 10px; font-family: sans-serif; pointer-events: none;">
+        v7
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toast-container"></div>
 </body>
 </html>
