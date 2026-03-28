@@ -22,9 +22,10 @@ const quill = new Quill('#editor-container', {
             [{ 'header': [1, 2, false] }],
             ['bold', 'italic', 'underline'],
             [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-            ['link', 'blockquote', 'code-block'],
+            ['link', 'blockquote', 'code-block', 'image'],
             ['clean']
-        ]
+        ],
+        cursors: true
     },
     placeholder: 'Commencez l\'histoire ici...'
 });
@@ -175,14 +176,40 @@ let ydoc, provider, binding;
 
 function toggleCollaboration() {
     if (provider) {
-        // Déconnexion rapide si déjà actif
         stopCollaboration();
         return;
     }
     
-    // Pré-remplir un nom de salle aléatoire
+    // Proposer un nom d'utilisateur aléatoire si non défini
+    if (!localStorage.getItem('collab-user-name')) {
+        const adjectives = ['Curieux', 'Créatif', 'Inspiré', 'Vif', 'Sage', 'Audacieux'];
+        const nouns = ['Écrivain', 'Plume', 'Auteur', 'Poète', 'Liseur', 'Scribe'];
+        const name = `${adjectives[Math.floor(Math.random() * adjectives.length)]} ${nouns[Math.floor(Math.random() * nouns.length)]} ${Math.floor(Math.random() * 100)}`;
+        localStorage.setItem('collab-user-name', name);
+        localStorage.setItem('collab-user-color', `#${Math.floor(Math.random()*16777215).toString(16)}`);
+    }
+
     createRoomInput.value = `write-online-${Math.random().toString(36).substring(7)}`;
     collabModal.classList.add('active');
+}
+
+function updatePresenceUI() {
+    const presenceList = document.getElementById('presence-list');
+    if (!presenceList || !provider) return;
+    
+    presenceList.innerHTML = '';
+    const states = provider.awareness.getStates();
+    
+    states.forEach((state, clientID) => {
+        if (state.user) {
+            const avatar = document.createElement('div');
+            avatar.className = 'presence-avatar';
+            avatar.style.backgroundColor = state.user.color;
+            avatar.textContent = state.user.name.charAt(0).toUpperCase();
+            avatar.setAttribute('data-name', state.user.name);
+            presenceList.appendChild(avatar);
+        }
+    });
 }
 
 function stopCollaboration() {
@@ -190,6 +217,7 @@ function stopCollaboration() {
     if (ydoc) ydoc.destroy();
     if (binding) binding.destroy();
     provider = null;
+    document.getElementById('presence-list').innerHTML = '';
     collabBtn.style.background = "var(--glass-bg)";
     collabBtn.style.color = "var(--accent)";
     saveIndicator.textContent = "Collaboration arrêtée";
@@ -203,36 +231,48 @@ async function startCollaboration(roomName, password = null) {
     saveIndicator.textContent = "Connexion Collab...";
     
     try {
-        // Chargement dynamique des dépendances P2P via ESM
-        const [{ Doc }, { WebrtcProvider }, { QuillBinding }] = await Promise.all([
+        const [{ Doc }, { WebrtcProvider }, { QuillBinding }, { default: QuillCursors }] = await Promise.all([
             import('https://esm.sh/yjs@13.6.8'),
             import('https://esm.sh/y-webrtc@10.3.0?deps=yjs@13.6.8'),
-            import('https://esm.sh/y-quill@0.1.5?deps=yjs@13.6.8')
+            import('https://esm.sh/y-quill@0.1.5?deps=yjs@13.6.8'),
+            import('https://esm.sh/quill-cursors@4.0.2')
         ]);
+
+        // Register Cursors if not already registered
+        if (!Quill.imports['modules/cursors']) {
+            Quill.register('modules/cursors', QuillCursors);
+        }
 
         ydoc = new Doc();
         const options = password ? { password: password } : {};
         provider = new WebrtcProvider(roomName, ydoc, options);
         
+        const userName = localStorage.getItem('collab-user-name') || 'Anonyme';
+        const userColor = localStorage.getItem('collab-user-color') || '#3b82f6';
+
+        provider.awareness.setLocalStateField('user', {
+            name: userName,
+            color: userColor
+        });
+
         provider.on('synced', isSynced => {
             if (isSynced) {
                 showToast("Synchronisé avec la salle", "success");
-            } else {
-                showToast("Perte de synchronisation avec les autres participants.", "error");
             }
         });
 
         provider.awareness.on('change', () => {
+            updatePresenceUI();
             const peers = Array.from(provider.awareness.getStates().keys()).length;
-            if (peers > 1) {
-                saveIndicator.textContent = `En direct : ${roomName}${password ? ' (Chiffré)' : ' (Public)'} - ${peers} en ligne`;
-            } else {
-                saveIndicator.textContent = `En direct : ${roomName}${password ? ' (Chiffré)' : ' (Public)'}`;
-            }
+            const statusBase = `En direct : ${roomName}${password ? ' (Chiffré)' : ' (Public)'}`;
+            saveIndicator.textContent = peers > 1 ? `${statusBase} - ${peers} en ligne` : statusBase;
         });
         
         const ytext = ydoc.getText('quill');
-        binding = new QuillBinding(ytext, quill, null);
+        
+        // Cursors integration
+        const cursorsModule = quill.getModule('cursors');
+        binding = new QuillBinding(ytext, quill, provider.awareness);
 
         collabBtn.style.background = "var(--accent)";
         collabBtn.style.color = "white";
@@ -240,7 +280,6 @@ async function startCollaboration(roomName, password = null) {
         
         collabModal.classList.remove('active');
 
-        // Mettre à jour l'URL (sans mot de passe)
         const newUrl = `${window.location.origin}${window.location.pathname}?room=${roomName}`;
         window.history.replaceState({}, document.title, newUrl);
         hideLoading();
@@ -249,7 +288,7 @@ async function startCollaboration(roomName, password = null) {
         console.error("Erreur Collab:", e);
         saveIndicator.textContent = "Erreur Collab";
         hideLoading();
-        showToast("Impossible de démarrer la collaboration. Vérifiez votre connexion.", 'error');
+        showToast("Impossible de démarrer la collaboration.", 'error');
         return false;
     }
 }
@@ -376,6 +415,55 @@ function downloadFile(content, fileName, contentType) {
     a.download = fileName;
     a.click();
     URL.revokeObjectURL(url);
+}
+
+// ---------- SUPPORT DES IMAGES (DRAG & DROP + OPTIMISATION) ----------
+
+const editorContainer = document.getElementById('editor-container');
+
+editorContainer.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+});
+
+editorContainer.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const files = e.dataTransfer.files;
+    if (files && files[0] && files[0].type.startsWith('image/')) {
+        handleImageUpload(files[0]);
+    }
+});
+
+function handleImageUpload(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 1200;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > MAX_WIDTH) {
+                height *= MAX_WIDTH / width;
+                width = MAX_WIDTH;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            const range = quill.getSelection() || { index: quill.getLength() };
+            quill.insertEmbed(range.index, 'image', dataUrl);
+            quill.setSelection(range.index + 1);
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
 }
 
 // ---------- PARAMÈTRES ----------
