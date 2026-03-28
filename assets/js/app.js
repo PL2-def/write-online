@@ -122,6 +122,8 @@ async function deleteDoc(id) {
 
 // ---------- SYSTÈME DE PARTAGE ----------
 
+let ydoc, provider, binding;
+
 async function shareDocument() {
     const text = quill.getText().trim();
     if (!text) return;
@@ -154,7 +156,60 @@ async function shareDocument() {
 }
 
 function toggleCollaboration() {
-    alert("La collaboration en temps réel arrive bientôt dans la prochaine mise à jour !");
+    if (provider) {
+        // Déconnexion
+        provider.destroy();
+        ydoc.destroy();
+        if (binding) binding.destroy();
+        provider = null;
+        collabBtn.style.background = "var(--glass-bg)";
+        collabBtn.style.color = "var(--accent)";
+        saveIndicator.textContent = "Collaboration arrêtée";
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return;
+    }
+
+    // 1. Nom de la salle
+    const roomName = prompt("Nom de la salle (ex: mon-roman) :", `write-online-${Math.random().toString(36).substring(7)}`);
+    if (!roomName) return;
+
+    // 2. Mot de passe optionnel
+    let password = prompt("Mot de passe de session (Optionnel - pour chiffrer vos échanges) :");
+    
+    if (!password) {
+        const confirmInsecure = confirm("⚠️ ATTENTION : Sans mot de passe, votre session n'est pas chiffrée de bout en bout. Des personnes connaissant le nom de la salle pourraient intercepter vos écrits. Continuer sans protection ?");
+        if (!confirmInsecure) return;
+    }
+
+    startCollaboration(roomName, password);
+}
+
+function startCollaboration(roomName, password = null) {
+    ydoc = new Y.Doc();
+    
+    // Configuration WebRTC avec chiffrement optionnel
+    const options = password ? { password: password } : {};
+    provider = new YWebrtcProvider(roomName, ydoc, options);
+    
+    const ytext = ydoc.getText('quill');
+    binding = new QuillBinding(ytext, quill, provider.awareness);
+
+    collabBtn.style.background = "var(--accent)";
+    collabBtn.style.color = "white";
+    saveIndicator.textContent = `En direct : ${roomName}${password ? ' (Chiffré)' : ' (Public)'}`;
+
+    // Avertissement de bienvenue / Charte de conduite
+    setTimeout(() => {
+        alert("🛡️ SESSION DE COLLABORATION REJOINTE\n\n- Respectez la vie privée des autres participants.\n- Toute tentative d'attaque ou d'injection est strictement proscrite.\n- Restez bienveillant dans vos écrits.");
+    }, 500);
+
+    // Mettre à jour l'URL (sans le mot de passe pour la sécurité)
+    const newUrl = `${window.location.origin}${window.location.pathname}?room=${roomName}`;
+    window.history.replaceState({}, document.title, newUrl);
+    
+    // Copier le lien
+    navigator.clipboard.writeText(newUrl);
+    alert(`Lien de collaboration copié !\n${password ? "N'oubliez pas de donner le mot de passe séparément à vos amis." : "Attention : Session publique sans mot de passe."}`);
 }
 
 // ---------- LOGIQUE UI & EVENTS ----------
@@ -270,6 +325,15 @@ async function initApp() {
     applyPreferences();
     
     const params = new URLSearchParams(window.location.search);
+    
+    // Check for Collaboration Room
+    const room = params.get('room');
+    if (room) {
+        const pass = prompt("Cette salle peut nécessiter un mot de passe pour déchiffrer le contenu (Laissez vide si aucun) :");
+        startCollaboration(room, pass);
+    }
+
+    // Check for Shared Content (LZString)
     const data = params.get('data');
     if (data) {
         const decompressed = LZString.decompressFromEncodedURIComponent(data);
@@ -282,7 +346,7 @@ async function initApp() {
 
     const docs = await dbManager.getAllDocs();
     if (docs.length === 0) await createNewDoc();
-    else loadDoc(docs[0]);
+    else if (!room) loadDoc(docs[0]); // Ne pas charger le doc local si on est en collab
 
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
