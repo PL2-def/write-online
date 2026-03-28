@@ -50,6 +50,16 @@ const closeSettings = document.getElementById('close-settings');
 const fontSelect = document.getElementById('font-select');
 const fontSizeRange = document.getElementById('font-size-range');
 
+// Collab Modal Elements
+const collabModal = document.getElementById('collab-modal');
+const closeCollab = document.getElementById('close-collab');
+const createRoomInput = document.getElementById('create-room-name');
+const createPassInput = document.getElementById('create-room-pass');
+const joinRoomInput = document.getElementById('join-room-name');
+const joinPassInput = document.getElementById('join-room-pass');
+const btnCreateCollab = document.getElementById('btn-create-collab');
+const btnJoinCollab = document.getElementById('btn-join-collab');
+
 // ---------- GESTION DES DOCUMENTS ----------
 
 async function refreshDocList() {
@@ -122,72 +132,37 @@ async function deleteDoc(id) {
 
 // ---------- SYSTÈME DE PARTAGE ----------
 
+// ---------- SYSTÈME DE COLLABORATION ----------
+
 let ydoc, provider, binding;
-
-async function shareDocument() {
-    const text = quill.getText().trim();
-    if (!text) return;
-
-    if (navigator.share) {
-        try {
-            await navigator.share({
-                title: docTitleInput.value,
-                text: text,
-                url: window.location.href
-            });
-            return;
-        } catch (err) {
-            console.log("Web Share annulé ou échoué", err);
-        }
-    }
-
-    const compressed = LZString.compressToEncodedURIComponent(text);
-    const url = `${window.location.origin}${window.location.pathname}?data=${compressed}`;
-    
-    if (url.length > 2048) {
-        if (confirm("Le document est trop long pour un lien direct. Voulez-vous créer un Gist GitHub pour le partager ?")) {
-            const gistUrl = `https://gist.github.com/?content=${encodeURIComponent(text)}`;
-            window.open(gistUrl, '_blank');
-        }
-    } else {
-        navigator.clipboard.writeText(url);
-        alert("Lien de partage optimisé copié dans le presse-papier !");
-    }
-}
 
 function toggleCollaboration() {
     if (provider) {
-        // Déconnexion
-        provider.destroy();
-        ydoc.destroy();
-        if (binding) binding.destroy();
-        provider = null;
-        collabBtn.style.background = "var(--glass-bg)";
-        collabBtn.style.color = "var(--accent)";
-        saveIndicator.textContent = "Collaboration arrêtée";
-        window.history.replaceState({}, document.title, window.location.pathname);
+        // Déconnexion rapide si déjà actif
+        stopCollaboration();
         return;
     }
-
-    // 1. Nom de la salle
-    const roomName = prompt("Nom de la salle (ex: mon-roman) :", `write-online-${Math.random().toString(36).substring(7)}`);
-    if (!roomName) return;
-
-    // 2. Mot de passe optionnel
-    let password = prompt("Mot de passe de session (Optionnel - pour chiffrer vos échanges) :");
     
-    if (!password) {
-        const confirmInsecure = confirm("⚠️ ATTENTION : Sans mot de passe, votre session n'est pas chiffrée de bout en bout. Des personnes connaissant le nom de la salle pourraient intercepter vos écrits. Continuer sans protection ?");
-        if (!confirmInsecure) return;
-    }
+    // Pré-remplir un nom de salle aléatoire
+    createRoomInput.value = `write-online-${Math.random().toString(36).substring(7)}`;
+    collabModal.classList.add('active');
+}
 
-    startCollaboration(roomName, password);
+function stopCollaboration() {
+    if (provider) provider.destroy();
+    if (ydoc) ydoc.destroy();
+    if (binding) binding.destroy();
+    provider = null;
+    collabBtn.style.background = "var(--glass-bg)";
+    collabBtn.style.color = "var(--accent)";
+    saveIndicator.textContent = "Collaboration arrêtée";
+    window.history.replaceState({}, document.title, window.location.pathname);
 }
 
 function startCollaboration(roomName, password = null) {
-    ydoc = new Y.Doc();
+    if (!roomName) return;
     
-    // Configuration WebRTC avec chiffrement optionnel
+    ydoc = new Y.Doc();
     const options = password ? { password: password } : {};
     provider = new YWebrtcProvider(roomName, ydoc, options);
     
@@ -197,20 +172,50 @@ function startCollaboration(roomName, password = null) {
     collabBtn.style.background = "var(--accent)";
     collabBtn.style.color = "white";
     saveIndicator.textContent = `En direct : ${roomName}${password ? ' (Chiffré)' : ' (Public)'}`;
+    
+    collabModal.classList.remove('active');
 
-    // Avertissement de bienvenue / Charte de conduite
-    setTimeout(() => {
-        alert("🛡️ SESSION DE COLLABORATION REJOINTE\n\n- Respectez la vie privée des autres participants.\n- Toute tentative d'attaque ou d'injection est strictement proscrite.\n- Restez bienveillant dans vos écrits.");
-    }, 500);
-
-    // Mettre à jour l'URL (sans le mot de passe pour la sécurité)
+    // Mettre à jour l'URL (sans mot de passe)
     const newUrl = `${window.location.origin}${window.location.pathname}?room=${roomName}`;
     window.history.replaceState({}, document.title, newUrl);
+}
+
+// Events pour le modal Collab
+closeCollab.onclick = () => collabModal.classList.remove('active');
+
+btnCreateCollab.onclick = () => {
+    const room = createRoomInput.value.trim();
+    const pass = createPassInput.value.trim();
+    
+    if (!room) return alert("Veuillez donner un nom à la salle.");
+    
+    if (!pass) {
+        if (!confirm("⚠️ Sans mot de passe, votre session n'est pas chiffrée. Continuer ?")) return;
+    }
+
+    startCollaboration(room, pass);
     
     // Copier le lien
-    navigator.clipboard.writeText(newUrl);
-    alert(`Lien de collaboration copié !\n${password ? "N'oubliez pas de donner le mot de passe séparément à vos amis." : "Attention : Session publique sans mot de passe."}`);
-}
+    const inviteUrl = `${window.location.origin}${window.location.pathname}?room=${room}`;
+    navigator.clipboard.writeText(inviteUrl);
+    alert(`Session démarrée !\nLien d'invitation copié dans le presse-papier.\n${pass ? "N'oubliez pas de donner le mot de passe à vos amis." : ""}`);
+};
+
+btnJoinCollab.onclick = () => {
+    const room = joinRoomInput.value.trim();
+    const pass = joinPassInput.value.trim();
+    
+    if (!room) return alert("Veuillez entrer le nom de la salle à rejoindre.");
+    
+    startCollaboration(room, pass);
+    alert("Tentative de connexion à la salle...");
+};
+
+// Initialisation globale pour fermer les modals en cliquant à côté
+window.onclick = (e) => { 
+    if(e.target === settingsModal) settingsModal.classList.remove('active'); 
+    if(e.target === collabModal) collabModal.classList.remove('active'); 
+};
 
 // ---------- LOGIQUE UI & EVENTS ----------
 

@@ -327,7 +327,7 @@ body.distraction-free .main-content {
 }
 
 .modal-content h3 {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 .setting-item {
@@ -337,12 +337,95 @@ body.distraction-free .main-content {
     gap: 0.5rem;
 }
 
+.setting-item label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
 .setting-item select, .setting-item input {
-    padding: 0.5rem;
+    padding: 0.75rem;
     border-radius: var(--radius-sm);
     border: 1px solid var(--glass-border);
     background: var(--glass-bg);
     color: var(--text-main);
+    outline: none;
+    font-family: inherit;
+}
+
+.setting-item input:focus {
+    border-color: var(--accent);
+}
+
+/* ---------- COLLAB MODAL STYLES ---------- */
+.collab-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.collab-box {
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--glass-border);
+}
+
+.collab-box h4 {
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.collab-divider {
+    text-align: center;
+    position: relative;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin: 0.5rem 0;
+}
+
+.collab-divider::before, .collab-divider::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 42%;
+    height: 1px;
+    background: var(--glass-border);
+}
+
+.collab-divider::before { left: 0; }
+.collab-divider::after { right: 0; }
+
+.btn-primary, .btn-secondary {
+    width: 100%;
+    padding: 0.85rem;
+    border-radius: var(--radius-sm);
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: white;
+}
+
+.btn-secondary {
+    background: var(--glass-bg);
+    color: var(--text-main);
+    border: 1px solid var(--glass-border);
+}
+
+.btn-primary:hover, .btn-secondary:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 /* ---------- FONTS ---------- */

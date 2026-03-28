@@ -132,6 +132,47 @@
         </div>
     </div>
 
+    <!-- Collab Modal -->
+    <div class="modal-overlay" id="collab-modal">
+        <div class="modal-content glass" style="max-width: 500px;">
+            <h3 style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem;">
+                <i data-lucide="users"></i> Collaboration P2P
+            </h3>
+            
+            <div class="collab-sections">
+                <div class="collab-box">
+                    <h4>Créer une session</h4>
+                    <div class="setting-item">
+                        <label>Nom de la salle</label>
+                        <input type="text" id="create-room-name" placeholder="Ex: mon-projet-secret">
+                    </div>
+                    <div class="setting-item">
+                        <label>Mot de passe (Optionnel)</label>
+                        <input type="password" id="create-room-pass" placeholder="Pour chiffrer les données">
+                    </div>
+                    <button class="btn-primary" id="btn-create-collab">Démarrer & Copier le lien</button>
+                </div>
+
+                <div class="collab-divider"><span>OU</span></div>
+
+                <div class="collab-box">
+                    <h4>Rejoindre une session</h4>
+                    <div class="setting-item">
+                        <label>Nom de la salle</label>
+                        <input type="text" id="join-room-name" placeholder="Nom reçu par votre ami">
+                    </div>
+                    <div class="setting-item">
+                        <label>Mot de passe</label>
+                        <input type="password" id="join-room-pass" placeholder="Si la salle est chiffrée">
+                    </div>
+                    <button class="btn-secondary" id="btn-join-collab">Rejoindre la salle</button>
+                </div>
+            </div>
+            
+            <button class="btn-icon" id="close-collab" style="width: 100%; margin-top: 1.5rem;">Fermer</button>
+        </div>
+    </div>
+
     <!-- App Logic -->
     <script type="module" src="assets/js/app.js"></script>
 </body>
