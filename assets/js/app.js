@@ -203,8 +203,8 @@ async function startCollaboration(roomName, password = null) {
         // Chargement dynamique des dépendances P2P via ESM
         const [{ Doc }, { WebrtcProvider }, { QuillBinding }] = await Promise.all([
             import('https://esm.sh/yjs@13.6.8'),
-            import('https://esm.sh/y-webrtc@10.3.0'),
-            import('https://esm.sh/y-quill@1.2.1')
+            import('https://esm.sh/y-webrtc@10.3.0?deps=yjs@13.6.8'),
+            import('https://esm.sh/y-quill@0.1.5?deps=yjs@13.6.8')
         ]);
 
         ydoc = new Doc();
@@ -223,17 +223,19 @@ async function startCollaboration(roomName, password = null) {
         // Mettre à jour l'URL (sans mot de passe)
         const newUrl = `${window.location.origin}${window.location.pathname}?room=${roomName}`;
         window.history.replaceState({}, document.title, newUrl);
+        return true;
     } catch (e) {
         console.error("Erreur Collab:", e);
         saveIndicator.textContent = "Erreur Collab";
         alert("Impossible de démarrer la collaboration. Vérifiez votre connexion.");
+        return false;
     }
 }
 
 // Events pour le modal Collab
 closeCollab.onclick = () => collabModal.classList.remove('active');
 
-btnCreateCollab.onclick = () => {
+btnCreateCollab.onclick = async () => {
     const room = createRoomInput.value.trim();
     const pass = createPassInput.value.trim();
     
@@ -243,22 +245,25 @@ btnCreateCollab.onclick = () => {
         if (!confirm("⚠️ Sans mot de passe, votre session n'est pas chiffrée. Continuer ?")) return;
     }
 
-    startCollaboration(room, pass);
+    const success = await startCollaboration(room, pass);
+    if (!success) return; // Ne pas afficher l'alerte si une erreur s'est produite
     
     // Copier le lien
     const inviteUrl = `${window.location.origin}${window.location.pathname}?room=${room}`;
-    navigator.clipboard.writeText(inviteUrl);
+    try {
+        await navigator.clipboard.writeText(inviteUrl);
+    } catch { } // Fallback quietly
+    
     alert(`Session démarrée !\nLien d'invitation copié dans le presse-papier.\n${pass ? "N'oubliez pas de donner le mot de passe à vos amis." : ""}`);
 };
 
-btnJoinCollab.onclick = () => {
+btnJoinCollab.onclick = async () => {
     const room = joinRoomInput.value.trim();
     const pass = joinPassInput.value.trim();
     
     if (!room) return alert("Veuillez entrer le nom de la salle à rejoindre.");
     
-    startCollaboration(room, pass);
-    alert("Tentative de connexion à la salle...");
+    await startCollaboration(room, pass);
 };
 
 // Fermeture des modals en cliquant sur l'overlay
