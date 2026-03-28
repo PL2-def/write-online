@@ -127,8 +127,12 @@ body {
     display: flex;
     flex-direction: column;
     position: relative;
+    max-width: calc(100% - 280px); /* Ajustement pour éviter le décentrage */
+    transition: all 0.5s ease;
+}
+
+body.distraction-free .main-content {
     max-width: 100%;
-    transition: padding 0.5s ease;
 }
 
 .top-nav {
@@ -136,14 +140,16 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 2rem;
+    gap: 1rem;
+    z-index: 50;
 }
 
 .title-container {
     flex: 1;
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem;
+    min-width: 0; /* Permet au texte de s'adapter */
 }
 
 #doc-title {
@@ -155,25 +161,29 @@ body {
     outline: none;
     width: 100%;
     max-width: 500px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .action-bar {
     display: flex;
-    gap: 0.75rem;
+    gap: 0.5rem;
+    flex-shrink: 0;
 }
 
 .btn-icon {
-    width: 40px;
-    height: 40px;
+    width: 38px;
+    height: 38px;
     border-radius: var(--radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    border: none;
+    border: 1px solid var(--glass-border);
     background: var(--glass-bg);
     color: var(--text-main);
-    border: 1px solid var(--glass-border);
+    flex-shrink: 0;
 }
 
 .btn-icon:hover {
@@ -186,18 +196,21 @@ body {
 .editor-section {
     flex: 1;
     overflow-y: auto;
-    padding: 2rem;
+    padding: 1.5rem;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
 }
 
 .editor-card {
     width: 100%;
     max-width: 850px;
-    min-height: 80vh;
+    min-height: calc(100vh - 160px);
     border-radius: var(--radius-lg);
-    padding: 3rem;
-    margin-bottom: 4rem;
+    padding: 2.5rem;
+    margin-bottom: 3rem;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Custom Quill Styles */
