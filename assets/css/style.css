@@ -131,7 +131,8 @@ body {
     transition: all 0.5s ease;
 }
 
-body.distraction-free .main-content {
+body.distraction-free .main-content,
+body.sidebar-collapsed .main-content {
     max-width: 100%;
 }
 

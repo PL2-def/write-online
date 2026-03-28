@@ -308,7 +308,10 @@ themeToggle.onclick = () => {
     localStorage.setItem('theme', next);
 };
 
-toggleSidebar.onclick = () => sidebar.classList.toggle('collapsed');
+toggleSidebar.onclick = () => {
+    sidebar.classList.toggle('collapsed');
+    body.classList.toggle('sidebar-collapsed');
+};
 newDocBtn.onclick = createNewDoc;
 saveBtn.onclick = saveCurrentDoc;
 shareBtn.onclick = shareDocument;
