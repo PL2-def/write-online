@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Write Online | Révolution</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <meta name="description" content="Un éditeur de texte minimaliste, immersif et hors-ligne.">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="Write Online Revolution">
+    <meta property="og:description" content="Écrivez n'importe où, n'importe quand.">
+    <meta property="og:type" content="website">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Quill CSS -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    
+    <!-- App Styles -->
+    <link rel="stylesheet" href="assets/css/style.css">
+
+    <!-- Scripts Externes -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://unpkg.com/turndown/dist/turndown.js"></script>
+</head>
+<body data-theme="light">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="logo">
+            <i data-lucide="pen-tool" style="color: var(--accent)"></i>
+            <span>WriteOnline</span>
+        </div>
+        
+        <button class="btn-icon" id="new-doc-btn" style="width: 100%; margin-bottom: 1.5rem; gap: 0.5rem;">
+            <i data-lucide="plus"></i> Nouveau
+        </button>
+
+        <div class="doc-list" id="doc-list">
+            <!-- Documents injectés ici -->
+        </div>
+
+        <div class="sidebar-footer">
+            <button class="btn-icon" id="theme-toggle" title="Changer le thème">
+                <i data-lucide="moon"></i>
+            </button>
+            <button class="btn-icon" id="export-all" title="Exporter en TXT">
+                <i data-lucide="download"></i>
+            </button>
+            <button class="btn-icon" id="settings-btn" title="Paramètres">
+                <i data-lucide="settings"></i>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <nav class="top-nav">
+            <div class="title-container">
+                <button class="btn-icon" id="toggle-sidebar">
+                    <i data-lucide="menu"></i>
+                </button>
+                <input type="text" id="doc-title" placeholder="Titre du document..." value="Mon Premier Brouillon">
+                <span id="save-indicator">Prêt</span>
+            </div>
+            
+            <div class="action-bar">
+                <button class="btn-icon" id="collab-btn" title="Collaborer en temps réel" style="border-color: var(--accent); color: var(--accent);">
+                    <i data-lucide="users"></i>
+                </button>
+                <button class="btn-icon" id="save-btn" title="Sauvegarder">
+                    <i data-lucide="save"></i>
+                </button>
+                <button class="btn-icon" id="share-btn" title="Partager (Natif ou Lien)">
+                    <i data-lucide="share-2"></i>
+                </button>
+                <button class="btn-icon" id="distraction-btn" title="Mode concentration">
+                    <i data-lucide="maximize"></i>
+                </button>
+            </div>
+        </nav>
+
+        <section class="editor-section">
+            <div class="editor-card glass">
+                <div id="toolbar-container"></div>
+                <div id="editor-container"></div>
+            </div>
+        </section>
+
+        <div class="floating-stats glass">
+            <span id="word-count">0</span> mots · <span id="read-time">0</span> min lecture
+        </div>
+    </main>
+
+    <!-- App Logic -->
+    <script type="module" src="assets/js/app.js"></script>
+</body>
+</html>
+mier Brouillon">
+                <span id="save-indicator">Prêt</span>
+            </div>
+            
+            <div class="action-bar">
+                <button class="btn-icon" id="collab-btn" title="Collaborer en temps réel" style="border-color: var(--accent); color: var(--accent);">
+                    <i data-lucide="users"></i>
+                </button>
+                <button class="btn-icon" id="save-btn" title="Sauvegarder">
+                    <i data-lucide="save"></i>
+                </button>
+                <button class="btn-icon" id="share-btn" title="Partager (Natif ou Lien)">
+                    <i data-lucide="share-2"></i>
+                </button>
+                <button class="btn-icon" id="distraction-btn" title="Mode concentration">
+                    <i data-lucide="maximize"></i>
+                </button>
+            </div>
+        </nav>
+
+        <section class="editor-section">
+            <div class="editor-card glass">
+                <div id="toolbar-container"></div>
+                <div id="editor-container"></div>
+            </div>
+        </section>
+
+        <div class="floating-stats glass">
+            <span id="word-count">0</span> mots · <span id="read-time">0</span> min lecture
+        </div>
+    </main>
+
+    <!-- App Logic -->
+    <script type="module" src="assets/js/app.js"></script>
+</body>
+</html>
