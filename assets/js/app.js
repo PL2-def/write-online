@@ -4,6 +4,7 @@
  */
 
 import { DBManager } from './db.js';
+import { showToast, showLoading, hideLoading, showConfirm, showPrompt, showCustomDialog } from './ui.js';
 
 // ---------- INITIALISATION ----------
 const dbManager = new DBManager();
@@ -59,88 +60,6 @@ const joinRoomInput = document.getElementById('join-room-name');
 const joinPassInput = document.getElementById('join-room-pass');
 const btnCreateCollab = document.getElementById('btn-create-collab');
 const btnJoinCollab = document.getElementById('btn-join-collab');
-
-// ---------- NOTIFICATIONS & DIALOGS ----------
-function showToast(message, type = 'info') {
-    const container = document.getElementById('toast-container');
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    
-    let icon = 'info';
-    if (type === 'success') icon = 'check-circle-2';
-    if (type === 'error') icon = 'alert-circle';
-    
-    toast.innerHTML = `<i data-lucide="${icon}"></i> <span>${message}</span>`;
-    container.appendChild(toast);
-    lucide.createIcons();
-    
-    // Animate in
-    setTimeout(() => toast.classList.add('show'), 10);
-    
-    // Auto remove
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-    }, 4000);
-}
-
-function showLoading(message) {
-    document.getElementById('loading-message').textContent = message;
-    document.getElementById('loading-overlay').classList.add('active');
-}
-
-function hideLoading() {
-    document.getElementById('loading-overlay').classList.remove('active');
-}
-
-function showCustomDialog({ title, message, isPrompt = false, defaultValue = '' }) {
-    return new Promise((resolve) => {
-        const overlay = document.getElementById('custom-dialog-overlay');
-        const titleEl = document.getElementById('custom-dialog-title');
-        const messageEl = document.getElementById('custom-dialog-message');
-        const confirmBtn = document.getElementById('custom-dialog-confirm');
-        const cancelBtn = document.getElementById('custom-dialog-cancel');
-        const promptContainer = document.getElementById('custom-prompt-container');
-        const promptInput = document.getElementById('custom-prompt-input');
-
-        titleEl.textContent = title;
-        messageEl.textContent = message;
-        
-        if (isPrompt) {
-            promptContainer.style.display = 'block';
-            promptInput.value = defaultValue;
-            promptInput.focus();
-        } else {
-            promptContainer.style.display = 'none';
-        }
-        
-        overlay.classList.add('active');
-
-        const cleanup = () => {
-            overlay.classList.remove('active');
-            confirmBtn.onclick = null;
-            cancelBtn.onclick = null;
-        };
-
-        confirmBtn.onclick = () => {
-            cleanup();
-            resolve(isPrompt ? promptInput.value : true);
-        };
-
-        cancelBtn.onclick = () => {
-            cleanup();
-            resolve(isPrompt ? null : false);
-        };
-    });
-}
-
-function showConfirm(message, title = "Confirmation") {
-    return showCustomDialog({ title, message, isPrompt: false });
-}
-
-function showPrompt(message, defaultValue = '', title = "Saisie requise") {
-    return showCustomDialog({ title, message, isPrompt: true, defaultValue });
-}
 
 // ---------- GESTION DES DOCUMENTS ----------
 
@@ -295,6 +214,23 @@ async function startCollaboration(roomName, password = null) {
         const options = password ? { password: password } : {};
         provider = new WebrtcProvider(roomName, ydoc, options);
         
+        provider.on('synced', isSynced => {
+            if (isSynced) {
+                showToast("Synchronisé avec la salle", "success");
+            } else {
+                showToast("Perte de synchronisation avec les autres participants.", "error");
+            }
+        });
+
+        provider.awareness.on('change', () => {
+            const peers = Array.from(provider.awareness.getStates().keys()).length;
+            if (peers > 1) {
+                saveIndicator.textContent = `En direct : ${roomName}${password ? ' (Chiffré)' : ' (Public)'} - ${peers} en ligne`;
+            } else {
+                saveIndicator.textContent = `En direct : ${roomName}${password ? ' (Chiffré)' : ' (Public)'}`;
+            }
+        });
+        
         const ytext = ydoc.getText('quill');
         binding = new QuillBinding(ytext, quill, null);
 
@@ -385,15 +321,19 @@ distractionBtn.onclick = () => {
     lucide.createIcons();
 };
 
+let wordCountTimer;
 quill.on('text-change', () => {
-    const text = quill.getText().trim();
-    const words = text.length > 0 ? text.split(/\s+/).length : 0;
-    const readTime = Math.ceil(words / 200);
-    document.getElementById('word-count').textContent = words;
-    document.getElementById('read-time').textContent = readTime;
-    
     clearTimeout(window.autoSaveTimer);
     window.autoSaveTimer = setTimeout(saveCurrentDoc, 1500);
+
+    clearTimeout(wordCountTimer);
+    wordCountTimer = setTimeout(() => {
+        const text = quill.getText().trim();
+        const words = text.length > 0 ? text.split(/\s+/).length : 0;
+        const readTime = Math.ceil(words / 200);
+        document.getElementById('word-count').textContent = words;
+        document.getElementById('read-time').textContent = readTime;
+    }, 500);
 });
 
 docTitleInput.oninput = () => {

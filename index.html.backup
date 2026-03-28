@@ -219,7 +219,7 @@
     </div>
 
     <div id="app-version" style="position: fixed; bottom: 10px; right: 10px; opacity: 0.5; font-size: 10px; font-family: sans-serif; pointer-events: none;">
-        v5
+        v4
     </div>
 
     <!-- Toast Notifications -->
