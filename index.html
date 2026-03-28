@@ -16,7 +16,7 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&display=swap" rel="stylesheet">
     
     <!-- Quill CSS -->
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
@@ -51,9 +51,17 @@
             <button class="btn-icon" id="theme-toggle" title="Changer le thème">
                 <i data-lucide="moon"></i>
             </button>
-            <button class="btn-icon" id="export-all" title="Exporter en TXT">
-                <i data-lucide="download"></i>
-            </button>
+            <div class="export-group">
+                <button class="btn-icon" id="export-all" title="Exporter en TXT">
+                    <i data-lucide="file-text"></i>
+                </button>
+                <button class="btn-icon" id="export-pdf" title="Exporter en PDF">
+                    <i data-lucide="file-type"></i>
+                </button>
+                <button class="btn-icon" id="export-md" title="Exporter en Markdown">
+                    <i data-lucide="hash"></i>
+                </button>
+            </div>
             <button class="btn-icon" id="settings-btn" title="Paramètres">
                 <i data-lucide="settings"></i>
             </button>
@@ -99,41 +107,25 @@
         </div>
     </main>
 
-    <!-- App Logic -->
-    <script type="module" src="assets/js/app.js"></script>
-</body>
-</html>
-mier Brouillon">
-                <span id="save-indicator">Prêt</span>
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal-content glass">
+            <h3>Paramètres</h3>
+            <div class="setting-item">
+                <label>Police de l'éditeur</label>
+                <select id="font-select">
+                    <option value="'Inter', sans-serif">Inter (Sans)</option>
+                    <option value="'Merriweather', serif">Merriweather (Serif)</option>
+                    <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
+                </select>
             </div>
-            
-            <div class="action-bar">
-                <button class="btn-icon" id="collab-btn" title="Collaborer en temps réel" style="border-color: var(--accent); color: var(--accent);">
-                    <i data-lucide="users"></i>
-                </button>
-                <button class="btn-icon" id="save-btn" title="Sauvegarder">
-                    <i data-lucide="save"></i>
-                </button>
-                <button class="btn-icon" id="share-btn" title="Partager (Natif ou Lien)">
-                    <i data-lucide="share-2"></i>
-                </button>
-                <button class="btn-icon" id="distraction-btn" title="Mode concentration">
-                    <i data-lucide="maximize"></i>
-                </button>
+            <div class="setting-item">
+                <label>Taille du texte</label>
+                <input type="range" id="font-size-range" min="12" max="32" value="18">
             </div>
-        </nav>
-
-        <section class="editor-section">
-            <div class="editor-card glass">
-                <div id="toolbar-container"></div>
-                <div id="editor-container"></div>
-            </div>
-        </section>
-
-        <div class="floating-stats glass">
-            <span id="word-count">0</span> mots · <span id="read-time">0</span> min lecture
+            <button class="btn-icon" id="close-settings" style="width: 100%; margin-top: 1rem;">Fermer</button>
         </div>
-    </main>
+    </div>
 
     <!-- App Logic -->
     <script type="module" src="assets/js/app.js"></script>

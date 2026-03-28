@@ -40,7 +40,15 @@ const saveBtn = document.getElementById('save-btn');
 const shareBtn = document.getElementById('share-btn');
 const distractionBtn = document.getElementById('distraction-btn');
 const exportAllBtn = document.getElementById('export-all');
+const exportPdfBtn = document.getElementById('export-pdf');
+const exportMdBtn = document.getElementById('export-md');
 const saveIndicator = document.getElementById('save-indicator');
+const collabBtn = document.getElementById('collab-btn');
+const settingsBtn = document.getElementById('settings-btn');
+const settingsModal = document.getElementById('settings-modal');
+const closeSettings = document.getElementById('close-settings');
+const fontSelect = document.getElementById('font-select');
+const fontSizeRange = document.getElementById('font-size-range');
 
 // ---------- GESTION DES DOCUMENTS ----------
 
@@ -112,13 +120,12 @@ async function deleteDoc(id) {
     }
 }
 
-// ---------- SYSTÈME DE PARTAGE (Le service qui marche) ----------
+// ---------- SYSTÈME DE PARTAGE ----------
 
 async function shareDocument() {
     const text = quill.getText().trim();
     if (!text) return;
 
-    // 1. Essayer l'API Web Share (Natif)
     if (navigator.share) {
         try {
             await navigator.share({
@@ -132,12 +139,10 @@ async function shareDocument() {
         }
     }
 
-    // 2. Fallback : Partage par URL compressée (LZ-String)
     const compressed = LZString.compressToEncodedURIComponent(text);
     const url = `${window.location.origin}${window.location.pathname}?data=${compressed}`;
     
     if (url.length > 2048) {
-        // 3. Fallback ultime : Proposition de publication Gist (Simulée par un lien externe)
         if (confirm("Le document est trop long pour un lien direct. Voulez-vous créer un Gist GitHub pour le partager ?")) {
             const gistUrl = `https://gist.github.com/?content=${encodeURIComponent(text)}`;
             window.open(gistUrl, '_blank');
@@ -148,9 +153,12 @@ async function shareDocument() {
     }
 }
 
+function toggleCollaboration() {
+    alert("La collaboration en temps réel arrive bientôt dans la prochaine mise à jour !");
+}
+
 // ---------- LOGIQUE UI & EVENTS ----------
 
-// Thème
 themeToggle.onclick = () => {
     const current = body.getAttribute('data-theme');
     const next = current === 'light' ? 'dark' : 'light';
@@ -160,14 +168,12 @@ themeToggle.onclick = () => {
     localStorage.setItem('theme', next);
 };
 
-// Sidebar
 toggleSidebar.onclick = () => sidebar.classList.toggle('collapsed');
 newDocBtn.onclick = createNewDoc;
 saveBtn.onclick = saveCurrentDoc;
 shareBtn.onclick = shareDocument;
 collabBtn.onclick = toggleCollaboration;
 
-// Mode Concentration
 distractionBtn.onclick = () => {
     body.classList.toggle('distraction-free');
     const isDistraction = body.classList.contains('distraction-free');
@@ -175,7 +181,6 @@ distractionBtn.onclick = () => {
     lucide.createIcons();
 };
 
-// Stats & Auto-save
 quill.on('text-change', () => {
     const text = quill.getText().trim();
     const words = text.length > 0 ? text.split(/\s+/).length : 0;
@@ -192,13 +197,11 @@ docTitleInput.oninput = () => {
     window.autoSaveTimer = setTimeout(saveCurrentDoc, 1000);
 };
 
-// Export TXT
 exportAllBtn.onclick = () => {
     const text = quill.getText();
     downloadFile(text, `${docTitleInput.value || 'export'}.txt`, 'text/plain');
 };
 
-// Export PDF
 exportPdfBtn.onclick = () => {
     const element = document.querySelector('.ql-editor');
     const opt = {
@@ -211,7 +214,6 @@ exportPdfBtn.onclick = () => {
     html2pdf().set(opt).from(element).save();
 };
 
-// Export Markdown
 exportMdBtn.onclick = () => {
     const turndownService = new TurndownService();
     const html = quill.root.innerHTML;
@@ -247,7 +249,6 @@ fontSizeRange.oninput = () => {
     localStorage.setItem('pref-font-size', size);
 };
 
-// Appliquer les préférences
 function applyPreferences() {
     const font = localStorage.getItem('pref-font') || "'Inter', sans-serif";
     const size = localStorage.getItem('pref-font-size') || "18px";
@@ -268,7 +269,6 @@ async function initApp() {
     await dbManager.init();
     applyPreferences();
     
-    // Check URL Params
     const params = new URLSearchParams(window.location.search);
     const data = params.get('data');
     if (data) {
@@ -284,7 +284,6 @@ async function initApp() {
     if (docs.length === 0) await createNewDoc();
     else loadDoc(docs[0]);
 
-    // Register Service Worker
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('./sw.js')
