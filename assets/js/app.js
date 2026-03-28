@@ -60,6 +60,88 @@ const joinPassInput = document.getElementById('join-room-pass');
 const btnCreateCollab = document.getElementById('btn-create-collab');
 const btnJoinCollab = document.getElementById('btn-join-collab');
 
+// ---------- NOTIFICATIONS & DIALOGS ----------
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    let icon = 'info';
+    if (type === 'success') icon = 'check-circle-2';
+    if (type === 'error') icon = 'alert-circle';
+    
+    toast.innerHTML = `<i data-lucide="${icon}"></i> <span>${message}</span>`;
+    container.appendChild(toast);
+    lucide.createIcons();
+    
+    // Animate in
+    setTimeout(() => toast.classList.add('show'), 10);
+    
+    // Auto remove
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+function showLoading(message) {
+    document.getElementById('loading-message').textContent = message;
+    document.getElementById('loading-overlay').classList.add('active');
+}
+
+function hideLoading() {
+    document.getElementById('loading-overlay').classList.remove('active');
+}
+
+function showCustomDialog({ title, message, isPrompt = false, defaultValue = '' }) {
+    return new Promise((resolve) => {
+        const overlay = document.getElementById('custom-dialog-overlay');
+        const titleEl = document.getElementById('custom-dialog-title');
+        const messageEl = document.getElementById('custom-dialog-message');
+        const confirmBtn = document.getElementById('custom-dialog-confirm');
+        const cancelBtn = document.getElementById('custom-dialog-cancel');
+        const promptContainer = document.getElementById('custom-prompt-container');
+        const promptInput = document.getElementById('custom-prompt-input');
+
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+        
+        if (isPrompt) {
+            promptContainer.style.display = 'block';
+            promptInput.value = defaultValue;
+            promptInput.focus();
+        } else {
+            promptContainer.style.display = 'none';
+        }
+        
+        overlay.classList.add('active');
+
+        const cleanup = () => {
+            overlay.classList.remove('active');
+            confirmBtn.onclick = null;
+            cancelBtn.onclick = null;
+        };
+
+        confirmBtn.onclick = () => {
+            cleanup();
+            resolve(isPrompt ? promptInput.value : true);
+        };
+
+        cancelBtn.onclick = () => {
+            cleanup();
+            resolve(isPrompt ? null : false);
+        };
+    });
+}
+
+function showConfirm(message, title = "Confirmation") {
+    return showCustomDialog({ title, message, isPrompt: false });
+}
+
+function showPrompt(message, defaultValue = '', title = "Saisie requise") {
+    return showCustomDialog({ title, message, isPrompt: true, defaultValue });
+}
+
 // ---------- GESTION DES DOCUMENTS ----------
 
 async function refreshDocList() {
@@ -118,7 +200,8 @@ async function createNewDoc() {
 }
 
 async function deleteDoc(id) {
-    if (confirm('Supprimer ce document ?')) {
+    const confirmed = await showConfirm('Êtes-vous sûr de vouloir supprimer ce document ?', 'Supprimer ce document');
+    if (confirmed) {
         await dbManager.deleteDoc(id);
         if (currentDoc && currentDoc.id === id) {
             const docs = await dbManager.getAllDocs();
@@ -154,16 +237,16 @@ async function shareDocument() {
     const shareUrl = `${window.location.origin}${window.location.pathname}?data=${compressed}`;
     
     if (shareUrl.length > 2000) {
-        alert('Le document est trop long pour être partagé via un lien. Utilisez l\'export à la place.');
+        showToast('Le document est trop long pour être partagé via un lien. Utilisez l\'export à la place.', 'error');
         return;
     }
 
     try {
         await navigator.clipboard.writeText(shareUrl);
-        alert('Lien de partage copié dans le presse-papier !');
+        showToast('Lien de partage copié dans le presse-papier !', 'success');
     } catch {
         // Fallback si clipboard échoue
-        prompt('Copiez ce lien :', shareUrl);
+        const result = await showPrompt('Copiez ce lien :', shareUrl, 'Partage');
     }
 }
 
@@ -197,6 +280,7 @@ function stopCollaboration() {
 async function startCollaboration(roomName, password = null) {
     if (!roomName) return;
     
+    showLoading(`Connexion à ${roomName}...`);
     saveIndicator.textContent = "Connexion Collab...";
     
     try {
@@ -223,11 +307,13 @@ async function startCollaboration(roomName, password = null) {
         // Mettre à jour l'URL (sans mot de passe)
         const newUrl = `${window.location.origin}${window.location.pathname}?room=${roomName}`;
         window.history.replaceState({}, document.title, newUrl);
+        hideLoading();
         return true;
     } catch (e) {
         console.error("Erreur Collab:", e);
         saveIndicator.textContent = "Erreur Collab";
-        alert("Impossible de démarrer la collaboration. Vérifiez votre connexion.");
+        hideLoading();
+        showToast("Impossible de démarrer la collaboration. Vérifiez votre connexion.", 'error');
         return false;
     }
 }
@@ -239,10 +325,11 @@ btnCreateCollab.onclick = async () => {
     const room = createRoomInput.value.trim();
     const pass = createPassInput.value.trim();
     
-    if (!room) return alert("Veuillez donner un nom à la salle.");
+    if (!room) return showToast("Veuillez donner un nom à la salle.", 'error');
     
     if (!pass) {
-        if (!confirm("⚠️ Sans mot de passe, votre session n'est pas chiffrée. Continuer ?")) return;
+        const proceed = await showConfirm("Sans mot de passe, votre session n'est pas chiffrée. Continuer ?", "⚠️ Attention");
+        if (!proceed) return;
     }
 
     const success = await startCollaboration(room, pass);
@@ -254,14 +341,14 @@ btnCreateCollab.onclick = async () => {
         await navigator.clipboard.writeText(inviteUrl);
     } catch { } // Fallback quietly
     
-    alert(`Session démarrée !\nLien d'invitation copié dans le presse-papier.\n${pass ? "N'oubliez pas de donner le mot de passe à vos amis." : ""}`);
+    showToast(`Session démarrée ! Lien copié. ${pass ? "Donnez le mot de passe." : ""}`, 'success');
 };
 
 btnJoinCollab.onclick = async () => {
     const room = joinRoomInput.value.trim();
     const pass = joinPassInput.value.trim();
     
-    if (!room) return alert("Veuillez entrer le nom de la salle à rejoindre.");
+    if (!room) return showToast("Veuillez entrer le nom de la salle à rejoindre.", 'error');
     
     await startCollaboration(room, pass);
 };
@@ -419,10 +506,13 @@ async function initApp() {
     const data = params.get('data');
     if (data) {
         const decompressed = LZString.decompressFromEncodedURIComponent(data);
-        if (decompressed && confirm("Charger le contenu partagé ?")) {
-            await createNewDoc();
-            quill.setText(decompressed);
-            saveCurrentDoc();
+        if (decompressed) {
+            const confirmed = await showConfirm("Charger le contenu partagé ?", "Document partagé");
+            if (confirmed) {
+                await createNewDoc();
+                quill.setText(decompressed);
+                saveCurrentDoc();
+            }
         }
     }
 

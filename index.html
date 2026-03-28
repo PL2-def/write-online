@@ -178,6 +178,29 @@
     <!-- App Logic -->
     <script type="module" src="assets/js/app.js"></script>
 
+    <!-- Custom Dialog Modal -->
+    <div class="modal-overlay" id="custom-dialog-overlay" style="z-index: 3000;">
+        <div class="modal-content glass" style="max-width: 400px; text-align: center;">
+            <h3 id="custom-dialog-title" style="margin-bottom: 1rem;">Titre</h3>
+            <p id="custom-dialog-message" style="margin-bottom: 2rem; color: var(--text-muted); font-size: 0.95rem;">Message</p>
+            <div id="custom-prompt-container" style="display: none; margin-bottom: 1.5rem;">
+                <input type="text" id="custom-prompt-input" style="width: 100%; padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: var(--glass-bg); color: var(--text-main); font-family: inherit;">
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <button class="btn-secondary" id="custom-dialog-cancel">Annuler</button>
+                <button class="btn-primary" id="custom-dialog-confirm">Confirmer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Full Screen Loading Overlay -->
+    <div class="modal-overlay" id="loading-overlay" style="z-index: 4000;">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; color: var(--text-main);">
+            <i data-lucide="loader-2" class="spin-icon" style="width: 48px; height: 48px; color: var(--accent);"></i>
+            <span id="loading-message" style="font-size: 1.2rem; font-weight: 500;">Chargement...</span>
+        </div>
+    </div>
+
     <!-- Password Required Modal -->
     <div class="modal-overlay" id="password-modal">
         <div class="modal-content glass" style="max-width: 400px;">
