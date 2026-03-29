@@ -1,34 +1,23 @@
 /**
  * C:\Users\PL2\Documents\write\assets\js\app.js
- * Logique principale de Write Online Revolution.
+ * Contrôleur principal de Write Online Revolution.
  */
 
 import { DBManager } from './db.js';
+import { EditorManager } from './editor.js';
+import { CollabManager } from './collab.js';
 import { showToast, showLoading, hideLoading, showConfirm, showPrompt, showCustomDialog } from './ui.js';
 
 // ---------- INITIALISATION ----------
 const dbManager = new DBManager();
+const editorManager = new EditorManager('#editor-container');
+const collabManager = new CollabManager(editorManager);
+
 let currentDoc = {
     title: 'Nouveau Document',
     content: null,
     updatedAt: Date.now()
 };
-
-// Initialisation de Quill
-const quill = new Quill('#editor-container', {
-    theme: 'snow',
-    modules: {
-        toolbar: [
-            [{ 'header': [1, 2, false] }],
-            ['bold', 'italic', 'underline'],
-            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-            ['link', 'blockquote', 'code-block', 'image'],
-            ['clean']
-        ],
-        cursors: true
-    },
-    placeholder: 'Commencez l\'histoire ici...'
-});
 
 // ---------- ELEMENTS UI ----------
 const themeToggle = document.getElementById('theme-toggle');
@@ -46,6 +35,7 @@ const exportPdfBtn = document.getElementById('export-pdf');
 const exportMdBtn = document.getElementById('export-md');
 const saveIndicator = document.getElementById('save-indicator');
 const collabBtn = document.getElementById('collab-btn');
+const presenceList = document.getElementById('presence-list');
 const settingsBtn = document.getElementById('settings-btn');
 const settingsModal = document.getElementById('settings-modal');
 const closeSettings = document.getElementById('close-settings');
@@ -66,14 +56,26 @@ const btnJoinCollab = document.getElementById('btn-join-collab');
 
 async function refreshDocList() {
     const docs = await dbManager.getAllDocs();
-    docList.innerHTML = '';
+    docList.innerHTML = ''; // Nettoyage
+    
     docs.sort((a, b) => b.updatedAt - a.updatedAt).forEach(doc => {
         const item = document.createElement('div');
         item.className = `doc-item ${currentDoc && currentDoc.id === doc.id ? 'active' : ''}`;
-        item.innerHTML = `
-            <span class="doc-name">${doc.title || 'Sans titre'}</span>
-            <i data-lucide="trash-2" class="delete-icon" style="width: 14px; opacity: 0.6"></i>
-        `;
+        
+        // CORRECTION XSS : Utilisation de textContent
+        const span = document.createElement('span');
+        span.className = 'doc-name';
+        span.textContent = doc.title || 'Sans titre';
+        
+        const icon = document.createElement('i');
+        icon.setAttribute('data-lucide', 'trash-2');
+        icon.className = 'delete-icon';
+        icon.style.width = '14px';
+        icon.style.opacity = '0.6';
+        
+        item.appendChild(span);
+        item.appendChild(icon);
+        
         item.onclick = (e) => {
             if (e.target.classList.contains('delete-icon') || e.target.closest('.delete-icon')) {
                 e.stopPropagation();
@@ -84,13 +86,14 @@ async function refreshDocList() {
         };
         docList.appendChild(item);
     });
-    lucide.createIcons();
+    
+    if (window.lucide) window.lucide.createIcons();
 }
 
 async function loadDoc(doc) {
     currentDoc = doc;
     docTitleInput.value = doc.title;
-    quill.setContents(doc.content || { ops: [] });
+    editorManager.setContents(doc.content);
     refreshDocList();
 }
 
@@ -98,13 +101,15 @@ async function saveCurrentDoc() {
     if (!currentDoc) return;
     saveIndicator.textContent = "Sauvegarde...";
     currentDoc.title = docTitleInput.value || 'Sans titre';
-    currentDoc.content = quill.getContents();
+    currentDoc.content = editorManager.getContents();
     currentDoc.updatedAt = Date.now();
     const id = await dbManager.saveDoc(currentDoc);
     if (!currentDoc.id) currentDoc.id = id;
     refreshDocList();
     setTimeout(() => {
-        saveIndicator.textContent = "Enregistré localement";
+        if (!collabManager.provider) {
+            saveIndicator.textContent = "Enregistré localement";
+        }
     }, 500);
 }
 
@@ -136,10 +141,9 @@ async function deleteDoc(id) {
 // ---------- SYSTÈME DE PARTAGE ----------
 
 async function shareDocument() {
-    const text = quill.getText().trim();
+    const text = editorManager.getText().trim();
     if (!text) return;
 
-    // Tentative de partage natif (mobile / navigateurs compatibles)
     if (navigator.share) {
         try {
             await navigator.share({
@@ -147,17 +151,14 @@ async function shareDocument() {
                 text: text
             });
             return;
-        } catch (e) {
-            // L'utilisateur a annulé ou l'API n'est pas supportée
-        }
+        } catch (e) { }
     }
 
-    // Fallback : lien compressé LZString
     const compressed = LZString.compressToEncodedURIComponent(text);
     const shareUrl = `${window.location.origin}${window.location.pathname}?data=${compressed}`;
     
     if (shareUrl.length > 2000) {
-        showToast('Le document est trop long pour être partagé via un lien. Utilisez l\'export à la place.', 'error');
+        showToast('Le document est trop long pour être partagé. Utilisez l\'export.', 'error');
         return;
     }
 
@@ -165,176 +166,79 @@ async function shareDocument() {
         await navigator.clipboard.writeText(shareUrl);
         showToast('Lien de partage copié dans le presse-papier !', 'success');
     } catch {
-        // Fallback si clipboard échoue
-        const result = await showPrompt('Copiez ce lien :', shareUrl, 'Partage');
+        await showPrompt('Copiez ce lien :', shareUrl, 'Partage');
     }
 }
 
-// ---------- SYSTÈME DE COLLABORATION ----------
 
-let ydoc, provider, binding;
+// ---------- GESTION DE LA COLLABORATION ----------
 
-function toggleCollaboration() {
-    if (provider) {
-        stopCollaboration();
+collabManager.onStateChange((state) => {
+    if (!state.active) {
+        presenceList.innerHTML = '';
+        collabBtn.style.background = "var(--glass-bg)";
+        collabBtn.style.color = "var(--text-main)";
+        saveIndicator.textContent = "Collaboration arrêtée";
+        window.history.replaceState({}, document.title, window.location.pathname);
         return;
     }
-    
-    // Proposer un nom d'utilisateur aléatoire si non défini
-    if (!localStorage.getItem('collab-user-name')) {
-        const adjectives = ['Curieux', 'Créatif', 'Inspiré', 'Vif', 'Sage', 'Audacieux'];
-        const nouns = ['Écrivain', 'Plume', 'Auteur', 'Poète', 'Liseur', 'Scribe'];
-        const name = `${adjectives[Math.floor(Math.random() * adjectives.length)]} ${nouns[Math.floor(Math.random() * nouns.length)]} ${Math.floor(Math.random() * 100)}`;
-        localStorage.setItem('collab-user-name', name);
-        localStorage.setItem('collab-user-color', `#${Math.floor(Math.random()*16777215).toString(16)}`);
-    }
 
+    // Mise à jour de la présence UI
+    presenceList.innerHTML = '';
+    state.states.forEach((s) => {
+        if (s.user) {
+            const avatar = document.createElement('div');
+            avatar.className = 'presence-avatar';
+            avatar.style.backgroundColor = s.user.color;
+            avatar.textContent = s.user.name.charAt(0).toUpperCase();
+            avatar.setAttribute('data-name', s.user.name);
+            presenceList.appendChild(avatar);
+        }
+    });
+
+    const statusBase = `En direct : ${state.roomName}${state.password ? ' (Chiffré)' : ' (Public)'}`;
+    saveIndicator.textContent = state.peers > 1 ? `${statusBase} - ${state.peers} en ligne` : statusBase;
+    
+    collabBtn.style.background = "var(--accent)";
+    collabBtn.style.color = "white";
+    
+    collabModal.classList.remove('active');
+    const newUrl = `${window.location.origin}${window.location.pathname}?room=${state.roomName}`;
+    window.history.replaceState({}, document.title, newUrl);
+});
+
+function toggleCollaboration() {
+    if (collabManager.provider) {
+        collabManager.stopCollaboration();
+        return;
+    }
     createRoomInput.value = `write-online-${Math.random().toString(36).substring(7)}`;
     collabModal.classList.add('active');
 }
 
-function updatePresenceUI() {
-    const presenceList = document.getElementById('presence-list');
-    if (!presenceList || !provider) return;
-    
-    presenceList.innerHTML = '';
-    const states = provider.awareness.getStates();
-    
-    states.forEach((state, clientID) => {
-        if (state.user) {
-            const avatar = document.createElement('div');
-            avatar.className = 'presence-avatar';
-            avatar.style.backgroundColor = state.user.color;
-            avatar.textContent = state.user.name.charAt(0).toUpperCase();
-            avatar.setAttribute('data-name', state.user.name);
-            presenceList.appendChild(avatar);
-        }
-    });
-}
-
-function stopCollaboration() {
-    if (provider) provider.destroy();
-    if (ydoc) ydoc.destroy();
-    if (binding) binding.destroy();
-    provider = null;
-    document.getElementById('presence-list').innerHTML = '';
-    collabBtn.style.background = "var(--glass-bg)";
-    collabBtn.style.color = "var(--accent)";
-    saveIndicator.textContent = "Collaboration arrêtée";
-    window.history.replaceState({}, document.title, window.location.pathname);
-}
-
-async function startCollaboration(roomName, password = null) {
-    if (!roomName) return;
-    
-    showLoading(`Connexion à ${roomName}...`);
-    saveIndicator.textContent = "Connexion Collab...";
-    
-    try {
-        const [{ Doc }, { WebrtcProvider }, { QuillBinding }, { default: QuillCursors }] = await Promise.all([
-            import('https://esm.sh/yjs@13.6.8'),
-            import('https://esm.sh/y-webrtc@10.3.0?deps=yjs@13.6.8'),
-            import('https://esm.sh/y-quill@0.1.5?deps=yjs@13.6.8'),
-            import('https://esm.sh/quill-cursors@4.0.2')
-        ]);
-
-        // Register Cursors if not already registered
-        if (!Quill.imports['modules/cursors']) {
-            Quill.register('modules/cursors', QuillCursors);
-        }
-
-        ydoc = new Doc();
-        const options = password ? { password: password } : {};
-        provider = new WebrtcProvider(roomName, ydoc, options);
-        
-        const userName = localStorage.getItem('collab-user-name') || 'Anonyme';
-        const userColor = localStorage.getItem('collab-user-color') || '#3b82f6';
-
-        provider.awareness.setLocalStateField('user', {
-            name: userName,
-            color: userColor
-        });
-
-        provider.on('synced', isSynced => {
-            if (isSynced) {
-                showToast("Synchronisé avec la salle", "success");
-            }
-        });
-
-        provider.awareness.on('change', () => {
-            updatePresenceUI();
-            const peers = Array.from(provider.awareness.getStates().keys()).length;
-            const statusBase = `En direct : ${roomName}${password ? ' (Chiffré)' : ' (Public)'}`;
-            saveIndicator.textContent = peers > 1 ? `${statusBase} - ${peers} en ligne` : statusBase;
-        });
-        
-        const ytext = ydoc.getText('quill');
-        
-        // Cursors integration
-        const cursorsModule = quill.getModule('cursors');
-        binding = new QuillBinding(ytext, quill, provider.awareness);
-
-        collabBtn.style.background = "var(--accent)";
-        collabBtn.style.color = "white";
-        saveIndicator.textContent = `En direct : ${roomName}${password ? ' (Chiffré)' : ' (Public)'}`;
-        
-        collabModal.classList.remove('active');
-
-        const newUrl = `${window.location.origin}${window.location.pathname}?room=${roomName}`;
-        window.history.replaceState({}, document.title, newUrl);
-        hideLoading();
-        return true;
-    } catch (e) {
-        console.error("Erreur Collab:", e);
-        saveIndicator.textContent = "Erreur Collab";
-        hideLoading();
-        showToast("Impossible de démarrer la collaboration.", 'error');
-        return false;
-    }
-}
-
-// Events pour le modal Collab
 closeCollab.onclick = () => collabModal.classList.remove('active');
 
 btnCreateCollab.onclick = async () => {
     const room = createRoomInput.value.trim();
     const pass = createPassInput.value.trim();
-    
     if (!room) return showToast("Veuillez donner un nom à la salle.", 'error');
-    
     if (!pass) {
         const proceed = await showConfirm("Sans mot de passe, votre session n'est pas chiffrée. Continuer ?", "⚠️ Attention");
         if (!proceed) return;
     }
-
-    const success = await startCollaboration(room, pass);
-    if (!success) return; // Ne pas afficher l'alerte si une erreur s'est produite
-    
-    // Copier le lien
+    const success = await collabManager.startCollaboration(room, pass);
+    if (!success) return; 
     const inviteUrl = `${window.location.origin}${window.location.pathname}?room=${room}`;
-    try {
-        await navigator.clipboard.writeText(inviteUrl);
-    } catch { } // Fallback quietly
-    
+    try { await navigator.clipboard.writeText(inviteUrl); } catch { }
     showToast(`Session démarrée ! Lien copié. ${pass ? "Donnez le mot de passe." : ""}`, 'success');
 };
 
 btnJoinCollab.onclick = async () => {
     const room = joinRoomInput.value.trim();
     const pass = joinPassInput.value.trim();
-    
-    if (!room) return showToast("Veuillez entrer le nom de la salle à rejoindre.", 'error');
-    
-    await startCollaboration(room, pass);
+    if (!room) return showToast("Nom de salle manquant.", 'error');
+    await collabManager.startCollaboration(room, pass);
 };
-
-// Fermeture des modals en cliquant sur l'overlay
-window.addEventListener('click', (e) => {
-    if (e.target === settingsModal) settingsModal.classList.remove('active');
-    if (e.target === collabModal) collabModal.classList.remove('active');
-    const passwordModal = document.getElementById('password-modal');
-    if (passwordModal && e.target === passwordModal) passwordModal.classList.remove('active');
-});
 
 // ---------- LOGIQUE UI & EVENTS ----------
 
@@ -343,7 +247,7 @@ themeToggle.onclick = () => {
     const next = current === 'light' ? 'dark' : 'light';
     body.setAttribute('data-theme', next);
     themeToggle.innerHTML = `<i data-lucide="${next === 'light' ? 'moon' : 'sun'}"></i>`;
-    lucide.createIcons();
+    if (window.lucide) window.lucide.createIcons();
     localStorage.setItem('theme', next);
 };
 
@@ -351,6 +255,7 @@ toggleSidebar.onclick = () => {
     sidebar.classList.toggle('collapsed');
     body.classList.toggle('sidebar-collapsed');
 };
+
 newDocBtn.onclick = createNewDoc;
 saveBtn.onclick = saveCurrentDoc;
 shareBtn.onclick = shareDocument;
@@ -360,17 +265,17 @@ distractionBtn.onclick = () => {
     body.classList.toggle('distraction-free');
     const isDistraction = body.classList.contains('distraction-free');
     distractionBtn.innerHTML = `<i data-lucide="${isDistraction ? 'minimize' : 'maximize'}"></i>`;
-    lucide.createIcons();
+    if (window.lucide) window.lucide.createIcons();
 };
 
 let wordCountTimer;
-quill.on('text-change', () => {
+editorManager.onTextChange(() => {
     clearTimeout(window.autoSaveTimer);
     window.autoSaveTimer = setTimeout(saveCurrentDoc, 1500);
 
     clearTimeout(wordCountTimer);
     wordCountTimer = setTimeout(() => {
-        const text = quill.getText().trim();
+        const text = editorManager.getText().trim();
         const words = text.length > 0 ? text.split(/\s+/).length : 0;
         const readTime = Math.ceil(words / 200);
         document.getElementById('word-count').textContent = words;
@@ -383,88 +288,9 @@ docTitleInput.oninput = () => {
     window.autoSaveTimer = setTimeout(saveCurrentDoc, 1000);
 };
 
-exportAllBtn.onclick = () => {
-    const text = quill.getText();
-    downloadFile(text, `${docTitleInput.value || 'export'}.txt`, 'text/plain');
-};
-
-exportPdfBtn.onclick = () => {
-    const element = document.querySelector('.ql-editor');
-    const opt = {
-        margin: 1,
-        filename: `${docTitleInput.value || 'export'}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-    };
-    html2pdf().set(opt).from(element).save();
-};
-
-exportMdBtn.onclick = () => {
-    const turndownService = new TurndownService();
-    const html = quill.root.innerHTML;
-    const markdown = turndownService.turndown(html);
-    downloadFile(markdown, `${docTitleInput.value || 'export'}.md`, 'text/markdown');
-};
-
-function downloadFile(content, fileName, contentType) {
-    const blob = new Blob([content], { type: contentType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    a.click();
-    URL.revokeObjectURL(url);
-}
-
-// ---------- SUPPORT DES IMAGES (DRAG & DROP + OPTIMISATION) ----------
-
-const editorContainer = document.getElementById('editor-container');
-
-editorContainer.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-});
-
-editorContainer.addEventListener('drop', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const files = e.dataTransfer.files;
-    if (files && files[0] && files[0].type.startsWith('image/')) {
-        handleImageUpload(files[0]);
-    }
-});
-
-function handleImageUpload(file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const MAX_WIDTH = 1200;
-            let width = img.width;
-            let height = img.height;
-
-            if (width > MAX_WIDTH) {
-                height *= MAX_WIDTH / width;
-                width = MAX_WIDTH;
-            }
-
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, width, height);
-            
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-            const range = quill.getSelection() || { index: quill.getLength() };
-            quill.insertEmbed(range.index, 'image', dataUrl);
-            quill.setSelection(range.index + 1);
-        };
-        img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-}
+exportAllBtn.onclick = () => editorManager.exportTxt(docTitleInput.value);
+exportPdfBtn.onclick = () => editorManager.exportPdf(docTitleInput.value);
+exportMdBtn.onclick = () => editorManager.exportMd(docTitleInput.value);
 
 // ---------- PARAMÈTRES ----------
 
@@ -473,37 +299,54 @@ closeSettings.onclick = () => settingsModal.classList.remove('active');
 
 fontSelect.onchange = () => {
     const font = fontSelect.value;
-    document.querySelector('.ql-container').style.fontFamily = font;
     localStorage.setItem('pref-font', font);
+    editorManager.applyPreferences();
 };
 
 fontSizeRange.oninput = () => {
     const size = fontSizeRange.value + 'px';
-    document.querySelector('.ql-container').style.fontSize = size;
     localStorage.setItem('pref-font-size', size);
+    editorManager.applyPreferences();
 };
 
-function applyPreferences() {
-    const font = localStorage.getItem('pref-font') || "'Inter', sans-serif";
-    const size = localStorage.getItem('pref-font-size') || "18px";
-    
-    fontSelect.value = font;
-    fontSizeRange.value = parseInt(size);
-    
-    const editor = document.querySelector('.ql-container');
-    if(editor) {
-        editor.style.fontFamily = font;
-        editor.style.fontSize = size;
+window.addEventListener('click', (e) => {
+    if (e.target === settingsModal) settingsModal.classList.remove('active');
+    if (e.target === collabModal) collabModal.classList.remove('active');
+    const passwordModal = document.getElementById('password-modal');
+    if (passwordModal && e.target === passwordModal) passwordModal.classList.remove('active');
+});
+
+// ---------- INSTALL PWA (PWA SETUP) ----------
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const installBtn = document.getElementById('pwa-install-btn');
+    if (installBtn) {
+        installBtn.style.display = 'flex';
+        installBtn.onclick = async () => {
+            installBtn.style.display = 'none';
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            deferredPrompt = null;
+        };
     }
-}
+});
+
 
 // ---------- INITIALISATION APP ----------
 
 async function initApp() {
     await dbManager.init();
-    applyPreferences();
+    editorManager.applyPreferences();
     
     const params = new URLSearchParams(window.location.search);
+    
+    // Check Action
+    if (params.get('action') === 'new') {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        await createNewDoc();
+    }
     
     // Check for Collaboration Room
     const room = params.get('room');
@@ -515,21 +358,17 @@ async function initApp() {
 
         if (passwordModal && submitPass && cancelPass && inputPass) {
             passwordModal.classList.add('active');
-
             submitPass.onclick = () => {
                 const pass = inputPass.value.trim() || null;
                 passwordModal.classList.remove('active');
-                startCollaboration(room, pass);
+                collabManager.startCollaboration(room, pass);
             };
-
             cancelPass.onclick = () => {
                 passwordModal.classList.remove('active');
-                // Rejoindre sans mot de passe (session publique)
-                startCollaboration(room, null);
+                collabManager.startCollaboration(room, null);
             };
         } else {
-            // Fallback si le modal n'existe pas
-            startCollaboration(room, null);
+            collabManager.startCollaboration(room, null);
         }
     }
 
@@ -541,7 +380,7 @@ async function initApp() {
             const confirmed = await showConfirm("Charger le contenu partagé ?", "Document partagé");
             if (confirmed) {
                 await createNewDoc();
-                quill.setText(decompressed);
+                editorManager.setText(decompressed);
                 saveCurrentDoc();
             }
         }
@@ -549,7 +388,7 @@ async function initApp() {
 
     const docs = await dbManager.getAllDocs();
     if (docs.length === 0) await createNewDoc();
-    else if (!room) loadDoc(docs[0]); // Ne pas charger le doc local si on est en collab
+    else if (!room && !params.get('action') && !data) loadDoc(docs[0]);
 
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
@@ -559,7 +398,8 @@ async function initApp() {
         });
     }
 
-    lucide.createIcons();
+    if (window.lucide) window.lucide.createIcons();
 }
 
-initApp();
+// Lier initApp au Window pour y avoir accès (Optionnel mais sécurisé)
+window.addEventListener('DOMContentLoaded', initApp);

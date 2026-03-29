@@ -31,7 +31,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://unpkg.com/turndown/dist/turndown.js"></script>
     
-    <!-- Collaboration P2P gérée via ESM dans app.js -->
+    <!-- P2P et Logique gérés via des modules dynamiques (assets/js/...) -->
 </head>
 <body data-theme="light">
     <script>
@@ -71,6 +71,9 @@
             </div>
             <button class="btn-icon" id="settings-btn" title="Paramètres">
                 <i data-lucide="settings"></i>
+            </button>
+            <button class="btn-icon" id="pwa-install-btn" title="Installer l'Application" style="display: none; color: var(--accent); border-color: var(--accent);">
+                <i data-lucide="download"></i>
             </button>
         </div>
     </aside>
@@ -221,7 +224,7 @@
     </div>
 
     <div id="app-version" style="position: fixed; bottom: 10px; right: 10px; opacity: 0.5; font-size: 10px; font-family: sans-serif; pointer-events: none;">
-        v6
+        v7
     </div>
 
     <!-- Toast Notifications -->
