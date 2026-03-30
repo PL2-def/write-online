@@ -1,2 +1,6 @@
 dep.py
 .version
+.version.bak
+*.backup
+__pycache__/
+deploy_report.log
