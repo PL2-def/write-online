@@ -11,7 +11,7 @@ if (!(Test-Path ".git")) {
     git init
 }
 
-# Author identity (prevent errors if not set)
+# Author identity
 $userEmail = git config user.email
 if ([string]::IsNullOrWhiteSpace($userEmail)) {
     Write-Host "Setting local author identity..."
@@ -31,7 +31,6 @@ if ($null -eq $currentRemote) {
 
 # Add & Commit
 Write-Host "Staging files..."
-git staging . 2>$null # workaround for some git aliases
 git add .
 $commitMsg = "Deploy update: " + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
 Write-Host "Creating commit: $commitMsg"
@@ -40,6 +39,10 @@ git commit -m "$commitMsg"
 # Branch management
 git branch -M $Branch
 
+# Pull remote changes (handle existing work)
+Write-Host "Pulling remote changes..."
+git pull origin $Branch --rebase --allow-unrelated-histories
+
 # Push
 Write-Host "Pushing to GitHub..."
 git push -u origin $Branch
@@ -47,5 +50,5 @@ git push -u origin $Branch
 if ($LASTEXITCODE -eq 0) {
     Write-Host "Deployment successful!"
 } else {
-    Write-Host "Deployment failed (check credentials or repo existence)."
+    Write-Host "Deployment failed. Check for merge conflicts or credentials."
 }
