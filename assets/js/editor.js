@@ -20,8 +20,7 @@ export class EditorManager {
                     ['blockquote', 'code-block'],
                     ['link', 'image', 'video'],
                     ['clean']
-                ],
-                cursors: true
+                ]
             },
             placeholder: 'Commencez l\'histoire ici...'
         });

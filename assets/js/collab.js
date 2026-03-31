@@ -60,9 +60,16 @@ export class CollabManager {
                 import('https://esm.sh/quill-cursors@4.0.2')
             ]);
 
+            const quill = this.editorManager.getQuillInstance();
+
             // Register Cursors if not already registered
             if (!window.Quill.imports['modules/cursors']) {
                 window.Quill.register('modules/cursors', QuillCursors);
+            }
+
+            // Dynamically add cursors module if not present
+            if (!quill.getModule('cursors')) {
+                quill.theme.addModule('cursors');
             }
 
             this.ydoc = new Doc();
