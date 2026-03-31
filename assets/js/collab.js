@@ -100,7 +100,6 @@ export class CollabManager {
                 }
             });
             
-            const quill = this.editorManager.getQuillInstance();
             const ytext = this.ydoc.getText('quill');
             
             this.binding = new QuillBinding(ytext, quill, this.provider.awareness);
