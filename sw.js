@@ -4,7 +4,7 @@
  * Optimisé pour GitHub Pages avec stratégie: Network First => Fallback Cache.
  */
 
-const CACHE_NAME = 'write-online-v3-ghpages';
+const CACHE_NAME = 'write-online-v4-ghpages';
 const ASSETS = [
     './',
     './index.html',
@@ -36,7 +36,6 @@ self.addEventListener('install', (e) => {
     self.skipWaiting();
     e.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
-            // Pas grave si certains échouent (.catch), l'app marchera quand même
             return cache.addAll(ASSETS).catch(err => console.warn('Cache warning:', err));
         })
     );
@@ -54,7 +53,7 @@ self.addEventListener('activate', (e) => {
     );
 });
 
-// Network First, fallback to cache (pour toujours avoir la dernière version GitHub)
+// Stratégie: Network First, fallback to cache
 self.addEventListener('fetch', (e) => {
     if (e.request.method !== 'GET') return;
     
@@ -64,7 +63,6 @@ self.addEventListener('fetch', (e) => {
             caches.open(CACHE_NAME).then(cache => cache.put(e.request, resClone));
             return response;
         }).catch(() => {
-            // Si hors-ligne, chercher en cache
             return caches.match(e.request);
         })
     );

@@ -337,68 +337,84 @@ window.addEventListener('beforeinstallprompt', (e) => {
 // ---------- INITIALISATION APP ----------
 
 async function initApp() {
-    await dbManager.init();
-    editorManager.applyPreferences();
-    
-    const params = new URLSearchParams(window.location.search);
-    
-    // Check Action
-    if (params.get('action') === 'new') {
-        window.history.replaceState({}, document.title, window.location.pathname);
-        await createNewDoc();
-    }
-    
-    // Check for Collaboration Room
-    const room = params.get('room');
-    if (room) {
-        const passwordModal = document.getElementById('password-modal');
-        const submitPass = document.getElementById('btn-submit-pass');
-        const cancelPass = document.getElementById('cancel-pass');
-        const inputPass = document.getElementById('input-session-pass');
-
-        if (passwordModal && submitPass && cancelPass && inputPass) {
-            passwordModal.classList.add('active');
-            submitPass.onclick = () => {
-                const pass = inputPass.value.trim() || null;
-                passwordModal.classList.remove('active');
-                collabManager.startCollaboration(room, pass);
-            };
-            cancelPass.onclick = () => {
-                passwordModal.classList.remove('active');
-                collabManager.startCollaboration(room, null);
-            };
-        } else {
-            collabManager.startCollaboration(room, null);
+    showLoading("Démarrage de Write Online...");
+    try {
+        await dbManager.init();
+        editorManager.applyPreferences();
+        
+        const params = new URLSearchParams(window.location.search);
+        
+        // Check Action
+        if (params.get('action') === 'new') {
+            window.history.replaceState({}, document.title, window.location.pathname);
+            await createNewDoc();
         }
-    }
+        
+        // Check for Collaboration Room
+        const room = params.get('room');
+        if (room) {
+            const passwordModal = document.getElementById('password-modal');
+            const submitPass = document.getElementById('btn-submit-pass');
+            const cancelPass = document.getElementById('cancel-pass');
+            const inputPass = document.getElementById('input-session-pass');
 
-    // Check for Shared Content (LZString)
-    const data = params.get('data');
-    if (data) {
-        const decompressed = LZString.decompressFromEncodedURIComponent(data);
-        if (decompressed) {
-            const confirmed = await showConfirm("Charger le contenu partagé ?", "Document partagé");
-            if (confirmed) {
-                await createNewDoc();
-                editorManager.setText(decompressed);
-                saveCurrentDoc();
+            if (passwordModal && submitPass && cancelPass && inputPass) {
+                passwordModal.classList.add('active');
+                submitPass.onclick = () => {
+                    const pass = inputPass.value.trim() || null;
+                    passwordModal.classList.remove('active');
+                    collabManager.startCollaboration(room, pass);
+                };
+                cancelPass.onclick = () => {
+                    passwordModal.classList.remove('active');
+                    collabManager.startCollaboration(room, null);
+                };
+            } else {
+                collabManager.startCollaboration(room, null);
             }
         }
+
+        // Check for Shared Content (LZString)
+        const data = params.get('data');
+        if (data) {
+            const decompressed = LZString.decompressFromEncodedURIComponent(data);
+            if (decompressed) {
+                const confirmed = await showConfirm("Charger le contenu partagé ?", "Document partagé");
+                if (confirmed) {
+                    await createNewDoc();
+                    editorManager.setText(decompressed);
+                    saveCurrentDoc();
+                }
+            }
+        }
+
+        const docs = await dbManager.getAllDocs();
+        if (docs.length === 0) {
+            await createNewDoc();
+        } else if (!room && !params.get('action') && !data) {
+            // Charger le document le plus récent par défaut
+            const latestDoc = docs.sort((a, b) => b.updatedAt - a.updatedAt)[0];
+            loadDoc(latestDoc);
+        } else {
+            // Si on est dans une salle ou une action spécifique, rafraîchir quand même la liste
+            refreshDocList();
+        }
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW enregistré !', reg))
+                    .catch(err => console.log('Erreur SW', err));
+            });
+        }
+
+        if (window.lucide) window.lucide.createIcons();
+    } catch (error) {
+        console.error("Erreur critique au démarrage:", error);
+        showToast("Erreur lors du chargement de l'application.", "error");
+    } finally {
+        hideLoading();
     }
-
-    const docs = await dbManager.getAllDocs();
-    if (docs.length === 0) await createNewDoc();
-    else if (!room && !params.get('action') && !data) loadDoc(docs[0]);
-
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js')
-                .then(reg => console.log('SW enregistré !', reg))
-                .catch(err => console.log('Erreur SW', err));
-        });
-    }
-
-    if (window.lucide) window.lucide.createIcons();
 }
 
 // Lier initApp au Window pour y avoir accès (Optionnel mais sécurisé)

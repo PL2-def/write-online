@@ -8,10 +8,13 @@ export class DBManager {
         this.dbName = 'WriteOnlineDB';
         this.dbVersion = 1;
         this.db = null;
+        this._initPromise = null;
     }
 
     async init() {
-        return new Promise((resolve, reject) => {
+        if (this._initPromise) return this._initPromise;
+
+        this._initPromise = new Promise((resolve, reject) => {
             const request = indexedDB.open(this.dbName, this.dbVersion);
             request.onupgradeneeded = (e) => {
                 const db = e.target.result;
@@ -23,34 +26,61 @@ export class DBManager {
                 this.db = e.target.result;
                 resolve();
             };
-            request.onerror = (e) => reject(e);
+            request.onerror = (e) => {
+                this._initPromise = null;
+                reject(new Error("Erreur d'initialisation IndexedDB: " + e.target.error));
+            };
         });
+
+        return this._initPromise;
+    }
+
+    async ensureDb() {
+        if (!this.db) await this.init();
     }
 
     async getAllDocs() {
-        return new Promise((resolve) => {
-            const transaction = this.db.transaction(['documents'], 'readonly');
-            const store = transaction.objectStore('documents');
-            const request = store.getAll();
-            request.onsuccess = () => resolve(request.result);
+        await this.ensureDb();
+        return new Promise((resolve, reject) => {
+            try {
+                const transaction = this.db.transaction(['documents'], 'readonly');
+                const store = transaction.objectStore('documents');
+                const request = store.getAll();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = (e) => reject(e);
+            } catch (e) {
+                reject(e);
+            }
         });
     }
 
     async saveDoc(doc) {
-        return new Promise((resolve) => {
-            const transaction = this.db.transaction(['documents'], 'readwrite');
-            const store = transaction.objectStore('documents');
-            const request = store.put(doc);
-            request.onsuccess = () => resolve(request.result);
+        await this.ensureDb();
+        return new Promise((resolve, reject) => {
+            try {
+                const transaction = this.db.transaction(['documents'], 'readwrite');
+                const store = transaction.objectStore('documents');
+                const request = store.put(doc);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = (e) => reject(e);
+            } catch (e) {
+                reject(e);
+            }
         });
     }
 
     async deleteDoc(id) {
-        return new Promise((resolve) => {
-            const transaction = this.db.transaction(['documents'], 'readwrite');
-            const store = transaction.objectStore('documents');
-            const request = store.delete(id);
-            request.onsuccess = () => resolve();
+        await this.ensureDb();
+        return new Promise((resolve, reject) => {
+            try {
+                const transaction = this.db.transaction(['documents'], 'readwrite');
+                const store = transaction.objectStore('documents');
+                const request = store.delete(id);
+                request.onsuccess = () => resolve();
+                request.onerror = (e) => reject(e);
+            } catch (e) {
+                reject(e);
+            }
         });
     }
 }
