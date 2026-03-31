@@ -1,10 +1,10 @@
 /**
  * c:\Users\PL2\Documents\write\sw.js
  * Service Worker pour Write Online Revolution.
- * Version 5: Librarian Update (Folders & Meta)
+ * Version 7: Stable
  */
 
-const CACHE_NAME = 'write-online-v5-ghpages';
+const CACHE_NAME = 'write-online-v7-ghpages';
 const ASSETS = [
     './',
     './index.html',

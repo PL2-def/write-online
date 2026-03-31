@@ -102,6 +102,14 @@ export class CollabManager {
             
             const ytext = this.ydoc.getText('quill');
             
+            // Si le document distant est vide, on injecte le contenu local actuel
+            if (ytext.toString().length === 0) {
+                const currentContent = quill.getText();
+                if (currentContent.trim().length > 0) {
+                    ytext.insert(0, currentContent);
+                }
+            }
+
             this.binding = new QuillBinding(ytext, quill, this.provider.awareness);
 
             hideLoading();

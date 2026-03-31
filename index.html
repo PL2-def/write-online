@@ -31,6 +31,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://unpkg.com/turndown/dist/turndown.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     
     <!-- P2P et Logique gérés via des modules dynamiques (assets/js/...) -->
 </head>
@@ -59,7 +60,7 @@
         <div class="search-container" style="margin-bottom: 1.5rem;">
             <div class="search-box">
                 <i data-lucide="search"></i>
-                <input type="text" id="search-input" placeholder="Rechercher...">
+                <input type="text" id="search-input" name="search" placeholder="Rechercher...">
             </div>
         </div>
 
@@ -89,6 +90,10 @@
                 <i data-lucide="download"></i>
             </button>
         </div>
+        
+        <div class="sidebar-quote" id="sidebar-quote">
+            <!-- Une citation inspirante s'affichera ici -->
+        </div>
     </aside>
 
     <!-- Main Content -->
@@ -98,9 +103,9 @@
                 <button class="btn-icon" id="toggle-sidebar">
                     <i data-lucide="menu"></i>
                 </button>
-                <input type="text" id="doc-title" placeholder="Titre du document..." value="Mon Premier Brouillon">
+                <input type="text" id="doc-title" name="doc-title" placeholder="Titre du document..." value="Mon Premier Brouillon">
                 <div class="doc-meta-header" style="display: flex; gap: 0.5rem; align-items: center;">
-                    <select id="doc-status-select" class="status-badge-select">
+                    <select id="doc-status-select" name="doc-status" class="status-badge-select">
                         <option value="draft">Brouillon</option>
                         <option value="review">En révision</option>
                         <option value="final">Finalisé</option>
@@ -129,6 +134,9 @@
 
         <section class="editor-section">
             <div class="editor-card glass">
+                <div class="reading-progress-container">
+                    <div id="reading-progress-bar" class="reading-progress-bar"></div>
+                </div>
                 <div id="toolbar-container"></div>
                 <div id="editor-container"></div>
             </div>
@@ -144,16 +152,29 @@
         <div class="modal-content glass">
             <h3>Paramètres</h3>
             <div class="setting-item">
-                <label>Police de l'éditeur</label>
-                <select id="font-select">
+                <label for="font-select">Police de l'éditeur</label>
+                <select id="font-select" name="editor-font">
                     <option value="'Inter', sans-serif">Inter (Sans)</option>
                     <option value="'Merriweather', serif">Merriweather (Serif)</option>
                     <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
                 </select>
             </div>
             <div class="setting-item">
-                <label>Taille du texte</label>
-                <input type="range" id="font-size-range" min="12" max="32" value="18">
+                <label for="theme-select-premium">Ambiance visuelle</label>
+                <select id="theme-select-premium" name="premium-theme">
+                    <option value="light">Clair (Standard)</option>
+                    <option value="dark">Sombre (Nuit)</option>
+                    <option value="sepia">Sépia (Papier)</option>
+                    <option value="midnight">Midnight (Océan)</option>
+                </select>
+            </div>
+            <div class="setting-item" style="flex-direction: row; align-items: center; justify-content: space-between;">
+                <label for="sound-toggle">Sons de frappe (Mécanique)</label>
+                <input type="checkbox" id="sound-toggle" style="width: auto;">
+            </div>
+            <div class="setting-item">
+                <label for="font-size-range">Taille du texte</label>
+                <input type="range" id="font-size-range" name="font-size" min="12" max="32" value="18">
             </div>
             <button class="btn-icon" id="close-settings" style="width: 100%; margin-top: 1rem;">Fermer</button>
         </div>
@@ -170,12 +191,12 @@
                 <div class="collab-box">
                     <h4>Créer une session</h4>
                     <div class="setting-item">
-                        <label>Nom de la salle</label>
-                        <input type="text" id="create-room-name" placeholder="Ex: mon-projet-secret">
+                        <label for="create-room-name">Nom de la salle</label>
+                        <input type="text" id="create-room-name" name="room-name" placeholder="Ex: mon-projet-secret">
                     </div>
                     <div class="setting-item">
-                        <label>Mot de passe (Optionnel)</label>
-                        <input type="password" id="create-room-pass" placeholder="Pour chiffrer les données">
+                        <label for="create-room-pass">Mot de passe (Optionnel)</label>
+                        <input type="password" id="create-room-pass" name="room-password" placeholder="Pour chiffrer les données">
                     </div>
                     <button class="btn-primary" id="btn-create-collab">Démarrer & Copier le lien</button>
                 </div>
@@ -185,12 +206,12 @@
                 <div class="collab-box">
                     <h4>Rejoindre une session</h4>
                     <div class="setting-item">
-                        <label>Nom de la salle</label>
-                        <input type="text" id="join-room-name" placeholder="Nom reçu par votre ami">
+                        <label for="join-room-name">Nom de la salle</label>
+                        <input type="text" id="join-room-name" name="join-room-name" placeholder="Nom reçu par votre ami">
                     </div>
                     <div class="setting-item">
-                        <label>Mot de passe</label>
-                        <input type="password" id="join-room-pass" placeholder="Si la salle est chiffrée">
+                        <label for="join-room-pass">Mot de passe</label>
+                        <input type="password" id="join-room-pass" name="join-room-pass" placeholder="Si la salle est chiffrée">
                     </div>
                     <button class="btn-secondary" id="btn-join-collab">Rejoindre la salle</button>
                 </div>
@@ -209,7 +230,8 @@
             <h3 id="custom-dialog-title" style="margin-bottom: 1rem;">Titre</h3>
             <p id="custom-dialog-message" style="margin-bottom: 2rem; color: var(--text-muted); font-size: 0.95rem;">Message</p>
             <div id="custom-prompt-container" style="display: none; margin-bottom: 1.5rem;">
-                <input type="text" id="custom-prompt-input" style="width: 100%; padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: var(--glass-bg); color: var(--text-main); font-family: inherit;">
+                <label for="custom-prompt-input" class="sr-only">Réponse</label>
+                <input type="text" id="custom-prompt-input" name="prompt-response" style="width: 100%; padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: var(--glass-bg); color: var(--text-main); font-family: inherit;">
             </div>
             <div style="display: flex; gap: 1rem;">
                 <button class="btn-secondary" id="custom-dialog-cancel">Annuler</button>
@@ -236,7 +258,8 @@
                 Cette salle peut nécessiter un mot de passe pour déchiffrer le contenu.
             </p>
             <div class="setting-item">
-                <input type="password" id="input-session-pass" placeholder="Mot de passe de la salle (ou vide)">
+                <label for="input-session-pass" class="sr-only">Mot de passe de la salle</label>
+                <input type="password" id="input-session-pass" name="session-pass" placeholder="Mot de passe de la salle (ou vide)">
             </div>
             <button class="btn-primary" id="btn-submit-pass">Accéder à la salle</button>
             <button class="btn-icon" id="cancel-pass" style="width: 100%; margin-top: 1rem;">Rejoindre sans mot de passe</button>

@@ -1,13 +1,31 @@
 /**
  * C:\Users\PL2\Documents\write\assets\js\ui.js
- * Gère les notifications, modales et overlays
+ * Gère les notifications, modales et overlays avec accessibilité et file d'attente.
  */
 
+const toastQueue = [];
+let isToastShowing = false;
+
 export function showToast(message, type = 'info') {
+    toastQueue.push({ message, type });
+    processToastQueue();
+}
+
+function processToastQueue() {
+    if (isToastShowing || toastQueue.length === 0) return;
+    
+    isToastShowing = true;
+    const { message, type } = toastQueue.shift();
+    
     const container = document.getElementById('toast-container');
-    if (!container) return;
+    if (!container) {
+        isToastShowing = false;
+        return;
+    }
+
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
+    toast.setAttribute('role', 'alert');
     
     let icon = 'info';
     if (type === 'success') icon = 'check-circle-2';
@@ -26,8 +44,12 @@ export function showToast(message, type = 'info') {
     // Auto remove
     setTimeout(() => {
         toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-    }, 4000);
+        setTimeout(() => {
+            toast.remove();
+            isToastShowing = false;
+            processToastQueue();
+        }, 300);
+    }, 3000);
 }
 
 export function showLoading(message) {
@@ -42,7 +64,7 @@ export function hideLoading() {
     if (loadingOverlay) loadingOverlay.classList.remove('active');
 }
 
-export function showCustomDialog({ title, message, isPrompt = false, defaultValue = '' }) {
+export function showCustomDialog({ title, message, isPrompt = false, defaultValue = '', isHtml = false }) {
     return new Promise((resolve) => {
         const overlay = document.getElementById('custom-dialog-overlay');
         const titleEl = document.getElementById('custom-dialog-title');
@@ -57,8 +79,21 @@ export function showCustomDialog({ title, message, isPrompt = false, defaultValu
             return;
         }
 
+        // Accessibility
+        const dialogContent = overlay.querySelector('.modal-content');
+        if (dialogContent) {
+            dialogContent.setAttribute('role', 'dialog');
+            dialogContent.setAttribute('aria-modal', 'true');
+            dialogContent.setAttribute('aria-labelledby', 'custom-dialog-title');
+            dialogContent.setAttribute('aria-describedby', 'custom-dialog-message');
+        }
+
         titleEl.textContent = title;
-        messageEl.textContent = message;
+        if (isHtml) {
+            messageEl.innerHTML = message;
+        } else {
+            messageEl.textContent = message;
+        }
         
         if (isPrompt) {
             promptContainer.style.display = 'block';
@@ -77,6 +112,7 @@ export function showCustomDialog({ title, message, isPrompt = false, defaultValu
         
         if (isPrompt) {
             promptInput.focus();
+            promptInput.select();
         } else {
             confirmBtn.focus();
         }
@@ -84,17 +120,24 @@ export function showCustomDialog({ title, message, isPrompt = false, defaultValu
         const handleKeydown = (e) => {
             if (e.key === 'Escape' || e.key === 'Esc') {
                 e.preventDefault();
-                e.stopPropagation();
                 cleanup();
                 resolve(isPrompt ? null : false);
-            } else if (e.key === 'Enter') {
+            } else if (e.key === 'Enter' && e.target !== cancelBtn) {
                 e.preventDefault();
-                e.stopPropagation();
                 cleanup();
                 resolve(isPrompt ? promptInput.value : true);
             } else if (e.key === 'Tab') {
-                // Ignore focus trap if not fully functional to avoid breaking
-                // the modal accessibility
+                if (e.shiftKey) { // Shift + Tab
+                    if (document.activeElement === firstFocusableElement) {
+                        lastFocusableElement.focus();
+                        e.preventDefault();
+                    }
+                } else { // Tab
+                    if (document.activeElement === lastFocusableElement) {
+                        firstFocusableElement.focus();
+                        e.preventDefault();
+                    }
+                }
             }
         };
 
