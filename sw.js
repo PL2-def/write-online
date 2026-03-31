@@ -1,10 +1,10 @@
 /**
  * c:\Users\PL2\Documents\write\sw.js
  * Service Worker pour Write Online Revolution.
- * Optimisé pour GitHub Pages avec stratégie: Network First => Fallback Cache.
+ * Version 5: Librarian Update (Folders & Meta)
  */
 
-const CACHE_NAME = 'write-online-v4-ghpages';
+const CACHE_NAME = 'write-online-v5-ghpages';
 const ASSETS = [
     './',
     './index.html',
@@ -25,7 +25,7 @@ const ASSETS = [
     'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',
     'https://unpkg.com/turndown/dist/turndown.js',
     
-    // Yjs / ESM.sh dependencies (mise en cache des libs collaboration)
+    // Yjs / ESM.sh dependencies
     'https://esm.sh/yjs@13.6.8',
     'https://esm.sh/y-webrtc@10.3.0?deps=yjs@13.6.8',
     'https://esm.sh/y-quill@0.1.5?deps=yjs@13.6.8',
@@ -53,7 +53,6 @@ self.addEventListener('activate', (e) => {
     );
 });
 
-// Stratégie: Network First, fallback to cache
 self.addEventListener('fetch', (e) => {
     if (e.request.method !== 'GET') return;
     

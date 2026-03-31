@@ -46,12 +46,24 @@
             <span>WriteOnline</span>
         </div>
         
-        <button class="btn-icon" id="new-doc-btn" style="width: 100%; margin-bottom: 1.5rem; gap: 0.5rem;">
-            <i data-lucide="plus"></i> Nouveau
-        </button>
+        <div class="sidebar-actions" style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
+            <button class="btn-icon" id="new-doc-btn" style="flex: 1; gap: 0.5rem;">
+                <i data-lucide="plus"></i> Nouveau
+            </button>
+            <button class="btn-icon" id="new-folder-btn" title="Nouveau Dossier">
+                <i data-lucide="folder-plus"></i>
+            </button>
+        </div>
+
+        <div class="search-container" style="margin-bottom: 1.5rem;">
+            <div class="search-box">
+                <i data-lucide="search"></i>
+                <input type="text" id="search-input" placeholder="Rechercher...">
+            </div>
+        </div>
 
         <div class="doc-list" id="doc-list">
-            <!-- Documents injectés ici -->
+            <!-- Documents et Dossiers injectés ici -->
         </div>
 
         <div class="sidebar-footer">
@@ -86,6 +98,13 @@
                     <i data-lucide="menu"></i>
                 </button>
                 <input type="text" id="doc-title" placeholder="Titre du document..." value="Mon Premier Brouillon">
+                <div class="doc-meta-header" style="display: flex; gap: 0.5rem; align-items: center;">
+                    <select id="doc-status-select" class="status-badge-select">
+                        <option value="draft">Brouillon</option>
+                        <option value="review">En révision</option>
+                        <option value="final">Finalisé</option>
+                    </select>
+                </div>
                 <span id="save-indicator">Prêt</span>
             </div>
 
