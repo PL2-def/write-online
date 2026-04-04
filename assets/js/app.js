@@ -8,6 +8,7 @@ import { DBManager } from './db.js';
 import { EditorManager } from './editor.js';
 import { CollabManager } from './collab.js';
 import { showToast, showLoading, hideLoading, showConfirm, showPrompt, showCustomDialog } from './ui.js';
+import { initEffects, powerMode } from './effects.js';
 
 // ---------- INITIALISATION ----------
 const dbManager = new DBManager();
@@ -68,6 +69,9 @@ async function initApp() {
         
         setupEventListeners();
         await refreshDocList();
+        
+        // Initialiser les effets visuels (Power Mode, Typewriter)
+        initEffects(editorManager.quill);
         
         // Charger le dernier document ouvert ou le plus récent
         const lastId = localStorage.getItem('last-doc-id');
@@ -203,19 +207,34 @@ function createDocElement(doc, query = '') {
 async function loadDoc(doc) {
     if (currentDoc && currentDoc.id === doc.id) return;
     
-    currentDoc = doc;
-    localStorage.setItem('last-doc-id', doc.id);
+    const editorCard = document.querySelector('.editor-card');
     
-    docTitleInput.value = doc.title || '';
-    docStatusSelect.value = doc.status || 'draft';
-    editorManager.setContents(doc.content);
+    // Animation de sortie
+    editorCard.classList.add('fade-out');
     
-    updateStats();
-    renderDocList();
-    
-    if (window.innerWidth < 768) {
-        sidebar.classList.add('collapsed');
-    }
+    setTimeout(async () => {
+        currentDoc = doc;
+        localStorage.setItem('last-doc-id', doc.id);
+        
+        docTitleInput.value = doc.title || '';
+        docStatusSelect.value = doc.status || 'draft';
+        editorManager.setContents(doc.content);
+        
+        updateStats();
+        renderDocList();
+        
+        // Animation d'entrée
+        editorCard.classList.remove('fade-out');
+        editorCard.classList.add('fade-in');
+        
+        setTimeout(() => {
+            editorCard.classList.remove('fade-in');
+        }, 600);
+        
+        if (window.innerWidth < 768) {
+            sidebar.classList.add('collapsed');
+        }
+    }, 400); // Durée du fade-out
 }
 
 async function createNewDoc(folderId = null) {
@@ -352,34 +371,131 @@ function updateFavicon(hasUnsavedChanges) {
 }
 
 function initPremiumFeatures() {
-    // Load sound pref
-    const soundEnabled = localStorage.getItem('pref-sound') === 'true';
-    if (soundToggle) {
-        soundToggle.checked = soundEnabled;
-        soundToggle.onchange = (e) => {
-            localStorage.setItem('pref-sound', e.target.checked);
-        };
-    }
+    const typewriterToggle = document.getElementById('typewriter-mode-toggle');
+    const powerModeToggle = document.getElementById('power-mode-toggle');
+    const spellcheckToggle = document.getElementById('spellcheck-toggle');
+    const fontSizeRange = document.getElementById('font-size-range');
+    const editorWidthRange = document.getElementById('editor-width-range');
+    const lineHeightRange = document.getElementById('line-height-range');
+    const focusOpacityRange = document.getElementById('focus-opacity-range');
+    const fontSelect = document.getElementById('font-select');
 
-    // Load premium theme pref
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    if (premiumThemeSelect) {
-        premiumThemeSelect.value = savedTheme;
-        premiumThemeSelect.onchange = (e) => {
-            const next = e.target.value;
+    // --- TAB LOGIC ---
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+    tabBtns.forEach(btn => {
+        btn.onclick = () => {
+            const target = btn.dataset.tab;
+            tabBtns.forEach(b => b.classList.remove('active'));
+            tabContents.forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById(`tab-${target}`).classList.add('active');
+        };
+    });
+
+    // --- THEME GRID LOGIC ---
+    const themeCards = document.querySelectorAll('.theme-card');
+    const currentTheme = localStorage.getItem('theme') || 'light';
+    themeCards.forEach(card => {
+        if (card.dataset.themeVal === currentTheme) card.classList.add('active');
+        card.onclick = () => {
+            const next = card.dataset.themeVal;
+            themeCards.forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
             document.body.setAttribute('data-theme', next);
             localStorage.setItem('theme', next);
         };
+    });
+
+    // --- EDITOR SETTINGS ---
+    
+    // Font Family
+    const savedFont = localStorage.getItem('pref-font') || "'Inter', sans-serif";
+    fontSelect.value = savedFont;
+    document.body.style.setProperty('--font-editor', savedFont);
+    fontSelect.onchange = (e) => {
+        localStorage.setItem('pref-font', e.target.value);
+        document.body.style.setProperty('--font-editor', e.target.value);
+    };
+
+    // Font Size
+    const savedFontSize = localStorage.getItem('pref-font-size') || '18';
+    fontSizeRange.value = savedFontSize;
+    document.getElementById('val-font-size').textContent = savedFontSize;
+    document.body.style.setProperty('--editor-font-size', savedFontSize + 'px');
+    fontSizeRange.oninput = (e) => {
+        const val = e.target.value;
+        document.getElementById('val-font-size').textContent = val;
+        document.body.style.setProperty('--editor-font-size', val + 'px');
+        localStorage.setItem('pref-font-size', val);
+    };
+
+    // Editor Width
+    const savedWidth = localStorage.getItem('pref-editor-width') || '850';
+    editorWidthRange.value = savedWidth;
+    document.getElementById('val-editor-width').textContent = savedWidth;
+    document.body.style.setProperty('--editor-max-width', savedWidth + 'px');
+    editorWidthRange.oninput = (e) => {
+        const val = e.target.value;
+        document.getElementById('val-editor-width').textContent = val;
+        document.body.style.setProperty('--editor-max-width', val + 'px');
+        localStorage.setItem('pref-editor-width', val);
+    };
+
+    // Line Height
+    const savedLineHeight = localStorage.getItem('pref-line-height') || '1.8';
+    lineHeightRange.value = savedLineHeight;
+    document.getElementById('val-line-height').textContent = savedLineHeight;
+    document.body.style.setProperty('--editor-line-height', savedLineHeight);
+    lineHeightRange.oninput = (e) => {
+        const val = e.target.value;
+        document.getElementById('val-line-height').textContent = val;
+        document.body.style.setProperty('--editor-line-height', val);
+        localStorage.setItem('pref-line-height', val);
+    };
+
+    // Focus Opacity
+    const savedFocusOpacity = localStorage.getItem('pref-focus-opacity') || '0';
+    focusOpacityRange.value = savedFocusOpacity;
+    document.getElementById('val-focus-opacity').textContent = savedFocusOpacity;
+    document.body.style.setProperty('--focus-opacity', savedFocusOpacity / 100);
+    focusOpacityRange.oninput = (e) => {
+        const val = e.target.value;
+        document.getElementById('val-focus-opacity').textContent = val;
+        document.body.style.setProperty('--focus-opacity', val / 100);
+        localStorage.setItem('pref-focus-opacity', val);
+    };
+
+    // Spellcheck
+    const spellcheckEnabled = localStorage.getItem('pref-spellcheck') !== 'false';
+    spellcheckToggle.checked = spellcheckEnabled;
+    const qlEditor = document.querySelector('.ql-editor');
+    if (qlEditor) qlEditor.setAttribute('spellcheck', spellcheckEnabled);
+    spellcheckToggle.onchange = (e) => {
+        const active = e.target.checked;
+        localStorage.setItem('pref-spellcheck', active);
+        if (qlEditor) qlEditor.setAttribute('spellcheck', active);
+    };
+
+    // Typewriter
+    const typewriterEnabled = localStorage.getItem('typewriter-mode') === 'true';
+    if (typewriterToggle) {
+        typewriterToggle.checked = typewriterEnabled;
+        if (typewriterEnabled) document.body.classList.add('typewriter-active');
+        typewriterToggle.onchange = (e) => {
+            const active = e.target.checked;
+            localStorage.setItem('typewriter-mode', active);
+            document.body.classList.toggle('typewriter-active', active);
+        };
     }
 
-    // Keyboard sound listener
-    const qlEditor = document.querySelector('.ql-editor');
-    if (qlEditor) {
-        qlEditor.addEventListener('keydown', () => {
-            if (localStorage.getItem('pref-sound') === 'true') {
-                playClickSound();
-            }
-        });
+    // Power Mode
+    const powerEnabled = localStorage.getItem('power-mode') === 'true';
+    if (powerModeToggle) {
+        powerModeToggle.checked = powerEnabled;
+        powerModeToggle.onchange = (e) => {
+            powerMode.toggle(e.target.checked);
+        };
     }
 }
 
@@ -407,22 +523,72 @@ function setupEventListeners() {
         document.body.setAttribute('data-theme', next);
         localStorage.setItem('theme', next);
         
-        const icon = themeToggle.querySelector('i');
-        icon.setAttribute('data-lucide', next === 'dark' ? 'sun' : 'moon');
-        if (window.lucide) window.lucide.createIcons();
+        const oldIcon = themeToggle.querySelector('i, svg');
+        if (oldIcon) {
+            const newIcon = document.createElement('i');
+            newIcon.setAttribute('data-lucide', next === 'dark' ? 'sun' : 'moon');
+            themeToggle.replaceChild(newIcon, oldIcon);
+            if (window.lucide) window.lucide.createIcons();
+        }
     };
     
     exportAllBtn.onclick = () => editorManager.exportTxt(docTitleInput.value);
     exportPdfBtn.onclick = () => editorManager.exportPdf(docTitleInput.value);
     exportMdBtn.onclick = () => editorManager.exportMd(docTitleInput.value);
     
-    distractionBtn.onclick = () => {
-        document.body.classList.toggle('distraction-free');
-        const icon = distractionBtn.querySelector('i');
-        const isFree = document.body.classList.contains('distraction-free');
-        icon.setAttribute('data-lucide', isFree ? 'minimize' : 'maximize');
-        if (window.lucide) window.lucide.createIcons();
+    const toggleDistractionFree = async () => {
+        if (!distractionBtn) return;
+        const isFree = document.body.classList.toggle('distraction-free');
+        
+        if (isFree) {
+            try {
+                if (document.documentElement.requestFullscreen) {
+                    await document.documentElement.requestFullscreen();
+                }
+            } catch (err) {
+                console.warn("Fullscreen API failed", err);
+            }
+        } else {
+            try {
+                if (document.fullscreenElement) {
+                    await document.exitFullscreen();
+                }
+            } catch (err) {
+                console.warn("Exit Fullscreen failed", err);
+            }
+        }
+        
+        const oldIcon = distractionBtn.querySelector('i, svg');
+        if (oldIcon) {
+            const newIcon = document.createElement('i');
+            newIcon.setAttribute('data-lucide', isFree ? 'minimize' : 'maximize');
+            distractionBtn.replaceChild(newIcon, oldIcon);
+            if (window.lucide) window.lucide.createIcons();
+        }
     };
+
+    distractionBtn.onclick = toggleDistractionFree;
+
+    // Listen for Escape key to exit distraction-free mode
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && document.body.classList.contains('distraction-free')) {
+            toggleDistractionFree();
+        }
+    });
+
+    // Handle browser-initiated fullscreen exit (e.g. Esc key handled by browser)
+    document.addEventListener('fullscreenchange', () => {
+        if (!document.fullscreenElement && document.body.classList.contains('distraction-free')) {
+            document.body.classList.remove('distraction-free');
+            const oldIcon = distractionBtn.querySelector('i, svg');
+            if (oldIcon) {
+                const newIcon = document.createElement('i');
+                newIcon.setAttribute('data-lucide', 'maximize');
+                distractionBtn.replaceChild(newIcon, oldIcon);
+                if (window.lucide) window.lucide.createIcons();
+            }
+        }
+    });
 
     saveBtn.onclick = () => {
         saveCurrentDoc();

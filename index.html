@@ -147,36 +147,89 @@
         </div>
     </main>
 
+    <canvas id="power-mode-canvas"></canvas>
+
     <!-- Settings Modal -->
     <div class="modal-overlay" id="settings-modal">
-        <div class="modal-content glass">
-            <h3>Paramètres</h3>
-            <div class="setting-item">
-                <label for="font-select">Police de l'éditeur</label>
-                <select id="font-select" name="editor-font">
-                    <option value="'Inter', sans-serif">Inter (Sans)</option>
-                    <option value="'Merriweather', serif">Merriweather (Serif)</option>
-                    <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
-                </select>
+        <div class="modal-content glass settings-modal-large">
+            <div class="settings-header">
+                <h3><i data-lucide="settings"></i> Configuration</h3>
+                <button class="btn-close-modal" id="close-settings"><i data-lucide="x"></i></button>
             </div>
-            <div class="setting-item">
-                <label for="theme-select-premium">Ambiance visuelle</label>
-                <select id="theme-select-premium" name="premium-theme">
-                    <option value="light">Clair (Standard)</option>
-                    <option value="dark">Sombre (Nuit)</option>
-                    <option value="sepia">Sépia (Papier)</option>
-                    <option value="midnight">Midnight (Océan)</option>
-                </select>
+            
+            <div class="settings-body">
+                <div class="settings-tabs">
+                    <button class="tab-btn active" data-tab="appearance"><i data-lucide="palette"></i> Style</button>
+                    <button class="tab-btn" data-tab="editor"><i data-lucide="align-left"></i> Éditeur</button>
+                    <button class="tab-btn" data-tab="advanced"><i data-lucide="zap"></i> Effets</button>
+                </div>
+
+                <div class="tab-content active" id="tab-appearance">
+                    <div class="setting-group">
+                        <label>Ambiance visuelle</label>
+                        <div class="theme-grid">
+                            <button class="theme-card" data-theme-val="light" title="Clair"><div class="swatch" style="background: #f0f2f5;"></div></button>
+                            <button class="theme-card" data-theme-val="dark" title="Sombre"><div class="swatch" style="background: #0f172a;"></div></button>
+                            <button class="theme-card" data-theme-val="sepia" title="Sépia"><div class="swatch" style="background: #f4ecd8;"></div></button>
+                            <button class="theme-card" data-theme-val="midnight" title="Midnight"><div class="swatch" style="background: #020617;"></div></button>
+                            <button class="theme-card" data-theme-val="cyberpunk" title="Cyberpunk"><div class="swatch" style="background: #050505; border: 1px solid #ff00ff;"></div></button>
+                            <button class="theme-card" data-theme-val="forest" title="Forêt"><div class="swatch" style="background: #1a1c18;"></div></button>
+                            <button class="theme-card" data-theme-val="terminal" title="Terminal"><div class="swatch" style="background: #000; border: 1px solid #00ff00;"></div></button>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <label for="font-select">Police de caractères</label>
+                        <select id="font-select">
+                            <option value="'Inter', sans-serif">Inter (Sans)</option>
+                            <option value="'Merriweather', serif">Merriweather (Serif)</option>
+                            <option value="'JetBrains Mono', monospace">JetBrains Mono (Code)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-editor">
+                    <div class="setting-item">
+                        <label>Taille du texte (<span id="val-font-size">18</span>px)</label>
+                        <input type="range" id="font-size-range" min="12" max="32" value="18">
+                    </div>
+                    <div class="setting-item">
+                        <label>Largeur de page (<span id="val-editor-width">850</span>px)</label>
+                        <input type="range" id="editor-width-range" min="400" max="1200" step="50" value="850">
+                    </div>
+                    <div class="setting-item">
+                        <label>Interlignage (<span id="val-line-height">1.8</span>)</label>
+                        <input type="range" id="line-height-range" min="1" max="2.5" step="0.1" value="1.8">
+                    </div>
+                    <div class="setting-item-row">
+                        <label>Correction orthographique</label>
+                        <label class="switch">
+                            <input type="checkbox" id="spellcheck-toggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-advanced">
+                    <div class="setting-item-row">
+                        <label>Mode Typewriter (Focus central)</label>
+                        <label class="switch">
+                            <input type="checkbox" id="typewriter-mode-toggle">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item-row">
+                        <label>Power Mode (Particules)</label>
+                        <label class="switch">
+                            <input type="checkbox" id="power-mode-toggle">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label>Opacité Focus (<span id="val-focus-opacity">0</span>%)</label>
+                        <input type="range" id="focus-opacity-range" min="0" max="100" value="0">
+                    </div>
+                </div>
             </div>
-            <div class="setting-item" style="flex-direction: row; align-items: center; justify-content: space-between;">
-                <label for="sound-toggle">Sons de frappe (Mécanique)</label>
-                <input type="checkbox" id="sound-toggle" style="width: auto;">
-            </div>
-            <div class="setting-item">
-                <label for="font-size-range">Taille du texte</label>
-                <input type="range" id="font-size-range" name="font-size" min="12" max="32" value="18">
-            </div>
-            <button class="btn-icon" id="close-settings" style="width: 100%; margin-top: 1rem;">Fermer</button>
         </div>
     </div>
 
